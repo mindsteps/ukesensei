@@ -22,6 +22,7 @@ import { SCALE_DEFINITIONS, SCALE_KEYS } from './theory/scales';
 import { CHROMATIC_NOTES, type NoteName } from './theory/notes';
 import { useGpuChordDetection } from './audio/useGpuChordDetection';
 import { ChordDisplay } from './components/ChordDisplay';
+import { FftVisualizer } from './components/FftVisualizer';
 import { getVoicingFretPositions } from './theory/chords';
 
 export default function App() {
@@ -312,6 +313,11 @@ export default function App() {
           <NoteDisplay note={detectedNote} />
           <CentsMeter cents={detectedNote?.cents ?? null} />
         </div>
+      </div>
+
+      {/* Live FFT spectrum */}
+      <div className="mb-4">
+        <FftVisualizer getAnalyser={mic.getAnalyser} isActive={mic.isActive} />
       </div>
 
       {/* Fretboard + Chord display */}

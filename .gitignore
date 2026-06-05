@@ -1,3 +1,17 @@
+# Dependencies
+node_modules
+.yarn/install-state.gz
+
+# Build output
+dist
+dist-ssr
+
+# Rust / WASM build artifacts
+wasm/target
+
+# Server runtime data
+server/data
+
 # Logs
 logs
 *.log
@@ -7,10 +21,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Environment and local overrides
 *.local
+.env
+.env.*
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +36,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+Thumbs.db

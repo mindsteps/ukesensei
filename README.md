@@ -41,18 +41,71 @@ After completing an exercise you get a summary with:
 ### Dark / light mode
 Toggle between dark and light themes. Your preference is saved in the browser.
 
-## Getting started
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) >= 20
+- [Yarn](https://yarnpkg.com/) (used as the package manager)
+- [Rust](https://www.rust-lang.org/tools/install) with the `wasm32-unknown-unknown` target (only needed if you want to rebuild the WASM audio engine)
+
+To add the WASM target to an existing Rust installation:
 
 ```bash
-npm install
-npm run dev
+rustup target add wasm32-unknown-unknown
+```
+
+## Getting started
+
+### Frontend
+
+```bash
+yarn install
+yarn dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) and click **Start Listening** to begin.
 
+### Server (optional)
+
+The server provides session recording and server-side audio analysis. It is not required for basic usage.
+
+```bash
+cd server
+yarn install
+yarn dev
+```
+
+### Rebuilding the WASM audio engine (optional)
+
+A pre-built `public/audio-engine.wasm` is included in the repository. To rebuild it from source:
+
+```bash
+cd wasm
+./build.sh
+```
+
+This compiles the Rust crate to WebAssembly and copies the output to `public/audio-engine.wasm`.
+
+## Project structure
+
+```
+ukesensei/
+├── src/                  # React frontend
+│   ├── audio/            # Microphone, pitch detection, chord detection hooks
+│   ├── components/       # UI components (fretboard, chord diagrams, etc.)
+│   ├── exercises/        # Exercise logic and session management
+│   ├── theory/           # Music theory (notes, scales, chords, fretboard mappings)
+│   └── store/            # Zustand state management
+├── server/               # Express API server (session recording, analysis)
+│   └── src/
+├── wasm/                 # Rust WASM audio engine (FFT-based pitch/chord detection)
+│   └── src/
+├── public/               # Static assets including pre-built WASM binary
+└── index.html            # Vite entry point
+```
+
 ## How to use
 
-### Free Play
+### Free play
 Start the microphone and play your ukulele. The fretboard lights up showing which notes you're hitting. Use the scale overlay controls to display any scale/mode and see how your playing relates to it.
 
 ### Exercises
@@ -63,8 +116,17 @@ Strum any chord and the chord name and fretting diagram appear alongside the fre
 
 ## Tech stack
 
-- React + TypeScript + Vite
-- Tailwind CSS
-- pitchy (McLeod Pitch Method for pitch detection)
-- Zustand (state management)
-- Custom SVG rendering for fretboard and chord diagrams
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS
+- **State management**: Zustand
+- **Pitch detection**: [pitchy](https://github.com/ianprime0509/pitchy) (McLeod Pitch Method)
+- **Audio engine**: Rust compiled to WebAssembly (rustfft for FFT)
+- **Server**: Express, better-sqlite3, multer
+- **Rendering**: Custom SVG for fretboard and chord diagrams
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
