@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 import { AuthProvider, useAuth } from './AuthProvider';
-import { SignInScreen } from '../components/SignInScreen';
 import { Onboarding } from '../components/Onboarding';
 
 function AuthGateInner({ children }: { children: ReactNode }) {
-  const { configured, loading, user, profile } = useAuth();
+  const { configured, loading, user, profile, forceOnboarding, closeOnboarding } = useAuth();
 
   if (!configured) {
     return <>{children}</>;
@@ -18,12 +17,15 @@ function AuthGateInner({ children }: { children: ReactNode }) {
     );
   }
 
+  // No account step — sign-in happens anonymously in the background
+  // (see AuthProvider). If that ever fails, fall back to running the app
+  // in local-only mode rather than dead-ending the user.
   if (!user) {
-    return <SignInScreen />;
+    return <>{children}</>;
   }
 
-  if (!profile?.onboarding_complete) {
-    return <Onboarding />;
+  if (!profile?.onboarding_complete || forceOnboarding) {
+    return <Onboarding onComplete={closeOnboarding} />;
   }
 
   return <>{children}</>;

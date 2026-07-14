@@ -18,6 +18,8 @@ export function getSupabase(): SupabaseClient | null {
 export interface UserProfile {
   id: string;
   display_name: string | null;
+  contact_email: string | null;
   preferred_key: string;
   onboarding_complete: boolean;
+  is_admin: boolean;
 }

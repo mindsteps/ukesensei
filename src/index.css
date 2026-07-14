@@ -3,6 +3,7 @@
 :root {
   --color-primary: #14b8a6;
   --color-primary-light: #5eead4;
+  --font-arty: 'Fraunces', ui-serif, Georgia, serif;
 }
 
 html:not(.dark) {

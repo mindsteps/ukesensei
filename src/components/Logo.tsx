@@ -1,0 +1,30 @@
+/** Uke Sensei brand mark — a minimal ukulele icon, replacing the generic guitar emoji. */
+export function Logo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id="ukeLogoGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#5eead4" />
+          <stop offset="100%" stopColor="#0d9488" />
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="31" fill="url(#ukeLogoGrad)" />
+      <g fill="white">
+        {/* Headstock + tuning pegs */}
+        <rect x="26" y="6" width="12" height="9" rx="3" />
+        <circle cx="23.5" cy="8.5" r="1.6" />
+        <circle cx="23.5" cy="12.5" r="1.6" />
+        <circle cx="40.5" cy="8.5" r="1.6" />
+        <circle cx="40.5" cy="12.5" r="1.6" />
+        {/* Neck */}
+        <rect x="29" y="14" width="6" height="15" />
+        {/* Body with soundhole cutout */}
+        <path
+          fillRule="evenodd"
+          d="M32,26 C22,26 16,34 16,43 C16,51 23,57 32,57 C41,57 48,51 48,43 C48,34 42,26 32,26 Z
+             M38,43 a6,6 0 1,0 -12,0 a6,6 0 1,0 12,0 Z"
+        />
+      </g>
+    </svg>
+  );
+}

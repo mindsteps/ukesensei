@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup:cloud": "./scripts/setup-cloud.sh",
+    "setup:db": "./scripts/push-db.sh",
+    "admin:grant": "./scripts/grant-admin.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.5",

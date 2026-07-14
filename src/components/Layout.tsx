@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { AppView, Instrument, TuningKey, Theme } from '../store/useAppStore';
-import { TUNINGS_BY_INSTRUMENT } from '../theory/fretboard';
+import { TUNINGS_BY_INSTRUMENT, isStringInstrument } from '../theory/fretboard';
 import { useAuth } from '../auth/AuthProvider';
+import { Logo } from './Logo';
 
 interface LayoutProps {
   view: AppView;
@@ -15,6 +16,8 @@ interface LayoutProps {
   onToggleTheme: () => void;
   /** Whether the current instrument has a lesson curriculum to show. */
   lessonsAvailable: boolean;
+  /** Whether the current instrument supports the fretboard-based exercises view. */
+  exercisesAvailable: boolean;
   children: ReactNode;
 }
 
@@ -29,10 +32,11 @@ export function Layout({
   theme,
   onToggleTheme,
   lessonsAvailable,
+  exercisesAvailable,
   children,
 }: LayoutProps) {
-  const tunings = TUNINGS_BY_INSTRUMENT[instrument];
-  const { profile, signOut, configured } = useAuth();
+  const tunings = isStringInstrument(instrument) ? TUNINGS_BY_INSTRUMENT[instrument] : null;
+  const { profile, signOut, configured, openOnboarding } = useAuth();
   const showUser = configured && profile?.onboarding_complete;
 
   return (
@@ -42,7 +46,7 @@ export function Layout({
         <div className="max-w-6xl mx-auto flex flex-col gap-2 sm:gap-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <span className="text-xl sm:text-2xl shrink-0">🎸</span>
+              <Logo className="w-7 h-7 sm:w-8 sm:h-8 shrink-0" />
               <h1 className="text-base sm:text-lg font-bold text-[var(--c-text-strong)] tracking-tight truncate">
                 Uke Sensei
               </h1>
@@ -50,16 +54,25 @@ export function Layout({
 
             <div className="flex items-center gap-2 shrink-0">
               {showUser && profile?.display_name && (
-                <span className="hidden sm:inline text-xs text-[var(--c-text-muted)] truncate max-w-[120px]">
+                <button
+                  onClick={openOnboarding}
+                  title="Edit profile"
+                  className="hidden sm:inline text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text-strong)] truncate max-w-[120px] px-2 py-1 rounded-md hover:bg-[var(--c-surface)] transition"
+                >
                   {profile.display_name}
-                </span>
+                </button>
               )}
               {showUser && (
                 <button
-                  onClick={() => signOut()}
+                  onClick={() => {
+                    if (window.confirm('Reset your profile? This starts fresh with a new name, key, and email.')) {
+                      signOut();
+                    }
+                  }}
+                  title="Reset profile and start over"
                   className="text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text-strong)] px-2 py-1 rounded-md hover:bg-[var(--c-surface)] transition"
                 >
-                  Sign out
+                  Reset profile
                 </button>
               )}
               <button
@@ -101,23 +114,31 @@ export function Layout({
                 >
                   Guitar
                 </NavButton>
+                <NavButton
+                  active={instrument === 'clarinet'}
+                  onClick={() => onInstrumentChange('clarinet')}
+                >
+                  Clarinet
+                </NavButton>
               </div>
 
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <select
-                  value={tuningKey}
-                  onChange={(e) => onTuningChange(e.target.value as TuningKey)}
-                  aria-label="Tuning"
-                  className="bg-[var(--c-surface)] text-[var(--c-text-on-input)] border border-[var(--c-border)] rounded-lg px-2 py-1 text-xs max-w-[140px] sm:max-w-none"
-                >
-                  {Object.entries(tunings).map(([key, t]) => (
-                    <option key={key} value={key}>{t.name}</option>
-                  ))}
-                </select>
-                {tuningAutoDetected && (
-                  <span className="text-[10px] text-emerald-400 font-medium">auto</span>
-                )}
-              </div>
+              {tunings && (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <select
+                    value={tuningKey}
+                    onChange={(e) => onTuningChange(e.target.value as TuningKey)}
+                    aria-label="Tuning"
+                    className="bg-[var(--c-surface)] text-[var(--c-text-on-input)] border border-[var(--c-border)] rounded-lg px-2 py-1 text-xs max-w-[140px] sm:max-w-none"
+                  >
+                    {Object.entries(tunings).map(([key, t]) => (
+                      <option key={key} value={key}>{t.name}</option>
+                    ))}
+                  </select>
+                  {tuningAutoDetected && (
+                    <span className="text-[10px] text-emerald-400 font-medium">auto</span>
+                  )}
+                </div>
+              )}
             </div>
 
             <nav className="flex gap-0.5 sm:gap-1 bg-[var(--c-surface)] rounded-lg p-0.5 sm:p-1 overflow-x-auto scrollbar-none">
@@ -127,12 +148,14 @@ export function Layout({
               >
                 Free Play
               </NavButton>
-              <NavButton
-                active={view === 'exercises'}
-                onClick={() => onViewChange('exercises')}
-              >
-                Exercises
-              </NavButton>
+              {exercisesAvailable && (
+                <NavButton
+                  active={view === 'exercises'}
+                  onClick={() => onViewChange('exercises')}
+                >
+                  Exercises
+                </NavButton>
+              )}
               {lessonsAvailable && (
                 <NavButton
                   active={view === 'lessons'}
@@ -147,6 +170,14 @@ export function Layout({
               >
                 Library
               </NavButton>
+              {showUser && profile?.is_admin && (
+                <NavButton
+                  active={view === 'admin'}
+                  onClick={() => onViewChange('admin')}
+                >
+                  Admin
+                </NavButton>
+              )}
             </nav>
           </div>
         </div>

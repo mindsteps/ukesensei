@@ -6,6 +6,7 @@ import { useAudioRecorder } from './audio/useAudioRecorder';
 import { useUkeSynth } from './audio/useUkeSynth';
 import { useBassSynth } from './audio/useBassSynth';
 import { useGuitarSynth } from './audio/useGuitarSynth';
+import { useClarinetSynth } from './audio/useClarinetSynth';
 import { useExercise } from './exercises/useExercise';
 import { useSession, type SessionResult } from './exercises/useSession';
 import { uploadSession, triggerAnalysis, type UploadMetadata } from './api/sessionApi';
@@ -22,12 +23,15 @@ import { FeedbackPanel } from './components/FeedbackPanel';
 import { Metronome } from './components/Metronome';
 import { SessionLibrary } from './components/SessionLibrary';
 import { SessionPlayback } from './components/SessionPlayback';
+import { AdminDashboard } from './components/AdminDashboard';
+import { AdminSignIn } from './components/AdminSignIn';
 import { LessonPath } from './components/LessonPath';
 import { LessonDetail } from './components/LessonDetail';
 import { SCALE_DEFINITIONS, SCALE_KEYS } from './theory/scales';
 import { CHROMATIC_NOTES, type NoteName } from './theory/notes';
 import { useChordDetection } from './audio/useChordDetection';
 import { ChordDisplay } from './components/ChordDisplay';
+import { ClarinetPanel } from './components/ClarinetPanel';
 import { FftVisualizer } from './components/FftVisualizer';
 import { SongRecorder } from './components/SongRecorder';
 import { getVoicingFretPositions } from './theory/chords';
@@ -36,10 +40,12 @@ import type { Lesson, PracticeExercise } from './lessons/types';
 import type { FretPosition } from './theory/fretboard';
 import { syncCompleteLesson, syncResetLessonProgress } from './storage/progressSync';
 import { useUrlSync } from './routing/useUrlSync';
+import { useAuth } from './auth/AuthProvider';
 
 export default function App() {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
+  const { profile } = useAuth();
   const detectedNote = useAppStore((s) => s.detectedNote);
   const setListening = useAppStore((s) => s.setListening);
   const selectedRoot = useAppStore((s) => s.selectedRoot);
@@ -74,7 +80,11 @@ export default function App() {
   const ukeSynth = useUkeSynth();
   const bassSynth = useBassSynth();
   const guitarSynth = useGuitarSynth();
-  const synth = instrument === 'bass' ? bassSynth : instrument === 'guitar' ? guitarSynth : ukeSynth;
+  const clarinetSynth = useClarinetSynth();
+  const synth = instrument === 'bass' ? bassSynth
+    : instrument === 'guitar' ? guitarSynth
+    : instrument === 'clarinet' ? clarinetSynth
+    : ukeSynth;
 
   const metronome = useMetronome();
   const recorder = useAudioRecorder();
@@ -446,7 +456,8 @@ export default function App() {
       <Layout view={view} onViewChange={setView} instrument={instrument} onInstrumentChange={setInstrument}
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected} theme={theme} onToggleTheme={toggleTheme}
-        lessonsAvailable={!!curriculum}>
+        lessonsAvailable={!!curriculum}
+        exercisesAvailable={instrument !== 'clarinet'}>
         <SessionLibrary onSelectSession={handleSelectSession} />
       </Layout>
     );
@@ -457,8 +468,32 @@ export default function App() {
       <Layout view={view} onViewChange={setView} instrument={instrument} onInstrumentChange={setInstrument}
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected} theme={theme} onToggleTheme={toggleTheme}
-        lessonsAvailable={!!curriculum}>
+        lessonsAvailable={!!curriculum}
+        exercisesAvailable={instrument !== 'clarinet'}>
         <SessionPlayback sessionId={selectedSessionId} onBack={handleBackToLibrary} />
+      </Layout>
+    );
+  }
+
+  if (view === 'admin') {
+    if (!profile?.is_admin) {
+      return (
+        <Layout view="freeplay" onViewChange={setView} instrument={instrument} onInstrumentChange={setInstrument}
+          tuningKey={tuningKey} onTuningChange={setTuning}
+          tuningAutoDetected={tuningAutoDetected} theme={theme} onToggleTheme={toggleTheme}
+          lessonsAvailable={!!curriculum}
+          exercisesAvailable={instrument !== 'clarinet'}>
+          <AdminSignIn />
+        </Layout>
+      );
+    }
+    return (
+      <Layout view={view} onViewChange={setView} instrument={instrument} onInstrumentChange={setInstrument}
+        tuningKey={tuningKey} onTuningChange={setTuning}
+        tuningAutoDetected={tuningAutoDetected} theme={theme} onToggleTheme={toggleTheme}
+        lessonsAvailable={!!curriculum}
+        exercisesAvailable={instrument !== 'clarinet'}>
+        <AdminDashboard />
       </Layout>
     );
   }
@@ -469,7 +504,8 @@ export default function App() {
       <Layout view={view} onViewChange={setView} instrument={instrument} onInstrumentChange={setInstrument}
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected} theme={theme} onToggleTheme={toggleTheme}
-        lessonsAvailable={!!curriculum}>
+        lessonsAvailable={!!curriculum}
+        exercisesAvailable={instrument !== 'clarinet'}>
         {lesson ? (
           <LessonDetail
             curriculum={curriculum}
@@ -503,6 +539,7 @@ export default function App() {
       theme={theme}
       onToggleTheme={toggleTheme}
       lessonsAvailable={!!curriculum}
+      exercisesAvailable={instrument !== 'clarinet'}
     >
       {/* Priority 1: pitch feedback — always visible, centered on small screens */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
@@ -527,61 +564,69 @@ export default function App() {
         </div>
       </div>
 
-      {/* Priority 2: fretboard — primary practice surface */}
+      {/* Priority 2: fretboard/fingering — primary practice surface */}
       <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 mb-3 sm:mb-4 lg:mb-6">
-        <div className="flex-1 bg-[var(--c-surface-half)] rounded-xl sm:rounded-2xl p-2 sm:p-4 border border-[var(--c-border-half)] min-w-0 order-1">
-          <div className="flex items-center justify-between h-[20px] mb-1 px-1">
-            <div>
-              {showScale && !exercise ? (
-                <span className="text-xs text-[var(--c-text-muted)]">
-                  Showing: <span className="text-[var(--c-accent)] font-medium">
-                    {activeRoot} {SCALE_DEFINITIONS[activeScale]?.name}
-                  </span>
-                </span>
-              ) : exercise && !exercise.isComplete ? (
-                <span className="text-xs text-[var(--c-text-muted)]">
-                  Exercise: <span className="text-amber-300 font-medium">
-                    {activeRoot} {SCALE_DEFINITIONS[activeScale]?.name}
-                  </span>
-                </span>
-              ) : null}
-            </div>
-            <button
-              onClick={() => setFretboardInverted(!fretboardInverted)}
-              className="text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition flex items-center gap-1"
-              title={
-                fretboardInverted
-                  ? `${tuning.strings[0]?.note} string on top`
-                  : `${tuning.strings[tuning.strings.length - 1]?.note} string on top`
-              }
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M7 4v16M7 4l-3 3M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3" />
-              </svg>
-              Flip strings
-            </button>
+        {instrument === 'clarinet' ? (
+          <div className="mx-auto sm:mx-0">
+            <ClarinetPanel detectedNote={detectedNote} onPlayNote={synth.playNote} />
           </div>
-          <Fretboard
-            tuning={tuning}
-            root={activeRoot}
-            scaleKey={activeScale}
-            showScale={showScale || !!exercise}
-            inverted={fretboardInverted}
-            detectedNote={exercise ? null : detectedNote}
-            targetPosition={targetPosition}
-            playedPositionIds={playedIds}
-            chordPositionIds={chordPositionIds}
-            onNoteClick={synth.playNote}
-          />
-        </div>
-        {instrument === 'ukulele' && (
+        ) : (
           <>
-            <div className="shrink-0 hidden lg:block order-2">
-              <ChordDisplay chord={detectedChord} />
+            <div className="flex-1 bg-[var(--c-surface-half)] rounded-xl sm:rounded-2xl p-2 sm:p-4 border border-[var(--c-border-half)] min-w-0 order-1">
+              <div className="flex items-center justify-between h-[20px] mb-1 px-1">
+                <div>
+                  {showScale && !exercise ? (
+                    <span className="text-xs text-[var(--c-text-muted)]">
+                      Showing: <span className="text-[var(--c-accent)] font-medium">
+                        {activeRoot} {SCALE_DEFINITIONS[activeScale]?.name}
+                      </span>
+                    </span>
+                  ) : exercise && !exercise.isComplete ? (
+                    <span className="text-xs text-[var(--c-text-muted)]">
+                      Exercise: <span className="text-amber-300 font-medium">
+                        {activeRoot} {SCALE_DEFINITIONS[activeScale]?.name}
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  onClick={() => setFretboardInverted(!fretboardInverted)}
+                  className="text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition flex items-center gap-1"
+                  title={
+                    fretboardInverted
+                      ? `${tuning.strings[0]?.note} string on top`
+                      : `${tuning.strings[tuning.strings.length - 1]?.note} string on top`
+                  }
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M7 4v16M7 4l-3 3M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3" />
+                  </svg>
+                  Flip strings
+                </button>
+              </div>
+              <Fretboard
+                tuning={tuning}
+                root={activeRoot}
+                scaleKey={activeScale}
+                showScale={showScale || !!exercise}
+                inverted={fretboardInverted}
+                detectedNote={exercise ? null : detectedNote}
+                targetPosition={targetPosition}
+                playedPositionIds={playedIds}
+                chordPositionIds={chordPositionIds}
+                onNoteClick={synth.playNote}
+              />
             </div>
-            <div className="lg:hidden order-2">
-              <ChordDisplay chord={detectedChord} compact />
-            </div>
+            {instrument === 'ukulele' && (
+              <>
+                <div className="shrink-0 hidden lg:block order-2">
+                  <ChordDisplay chord={detectedChord} />
+                </div>
+                <div className="lg:hidden order-2">
+                  <ChordDisplay chord={detectedChord} compact />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -632,14 +677,16 @@ export default function App() {
         {/* Free play controls */}
         {view === 'freeplay' && !exercise && (
           <div className="space-y-6">
-            <FreePlayControls
-              root={selectedRoot}
-              scale={selectedScale}
-              showScale={showScale}
-              onRootChange={setSelectedRoot}
-              onScaleChange={setSelectedScale}
-              onToggleScale={setShowScale}
-            />
+            {instrument !== 'clarinet' && (
+              <FreePlayControls
+                root={selectedRoot}
+                scale={selectedScale}
+                showScale={showScale}
+                onRootChange={setSelectedRoot}
+                onScaleChange={setSelectedScale}
+                onToggleScale={setShowScale}
+              />
+            )}
             <div>
               <h2 className="text-sm font-semibold text-[var(--c-text-muted)] uppercase tracking-wider mb-3">
                 Record Song
@@ -676,7 +723,12 @@ export default function App() {
         )}
 
         {/* Exercise selector */}
-        {view === 'exercises' && !exercise && (
+        {view === 'exercises' && !exercise && instrument === 'clarinet' && (
+          <p className="text-sm text-[var(--c-text-muted)]">
+            Exercises aren&apos;t available for clarinet yet — try Free Play to practice fingerings.
+          </p>
+        )}
+        {view === 'exercises' && !exercise && instrument !== 'clarinet' && (
           <ExerciseSelector
             selectedRoot={selectedRoot}
             selectedScale={selectedScale}

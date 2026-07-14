@@ -1,6 +1,14 @@
 import { type NoteName, semitoneToNote, noteToSemitone } from './notes';
 
-export type Instrument = 'ukulele' | 'bass' | 'guitar';
+/** Instruments with strings/frets, i.e. ones that have a tuning and a fretboard diagram. */
+export type StringInstrument = 'ukulele' | 'bass' | 'guitar';
+
+/** Clarinet has no strings/frets — it uses a fingering diagram instead (see clarinetFingerings.ts). */
+export type Instrument = StringInstrument | 'clarinet';
+
+export function isStringInstrument(instrument: Instrument): instrument is StringInstrument {
+  return instrument === 'ukulele' || instrument === 'bass' || instrument === 'guitar';
+}
 
 export interface FretPosition {
   string: number;   // string index, 0 = topmost string as drawn on the fretboard
@@ -73,13 +81,13 @@ export const GUITAR_TUNINGS: Record<string, InstrumentTuning> = {
   },
 };
 
-export const TUNINGS_BY_INSTRUMENT: Record<Instrument, Record<string, InstrumentTuning>> = {
+export const TUNINGS_BY_INSTRUMENT: Record<StringInstrument, Record<string, InstrumentTuning>> = {
   ukulele: TUNINGS,
   bass: BASS_TUNINGS,
   guitar: GUITAR_TUNINGS,
 };
 
-export const DEFAULT_TUNING_KEY: Record<Instrument, string> = {
+export const DEFAULT_TUNING_KEY: Record<StringInstrument, string> = {
   ukulele: 'low_g',
   bass: 'bass_standard',
   guitar: 'guitar_standard',

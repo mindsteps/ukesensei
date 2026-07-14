@@ -2,13 +2,15 @@ import { type NoteName, frequencyToNote } from '../theory/notes';
 import {
   generateFretboard,
   findNotePositions,
+  isStringInstrument,
   TUNINGS_BY_INSTRUMENT,
   DEFAULT_TUNING_KEY,
   type FretPosition,
   type Instrument,
+  type StringInstrument,
 } from '../theory/fretboard';
 
-const fretboards: Record<Instrument, Record<string, FretPosition[]>> = {
+const fretboards: Record<StringInstrument, Record<string, FretPosition[]>> = {
   ukulele: Object.fromEntries(
     Object.entries(TUNINGS_BY_INSTRUMENT.ukulele).map(([key, t]) => [key, generateFretboard(t)]),
   ),
@@ -44,6 +46,9 @@ export const AUDIO_CONFIG_BY_INSTRUMENT: Record<
   // Open E2 is ~82 Hz -- closer to bass than ukulele, so use the same larger
   // analysis window for reliable low-string resolution.
   guitar: { minFrequency: 70, maxFrequency: 1400, analysisSize: 4096 },
+  // Chalumeau E3 (~165 Hz) to clarion C6 (~1047 Hz), the range covered by
+  // the fingering chart in clarinetFingerings.ts.
+  clarinet: { minFrequency: 145, maxFrequency: 1100, analysisSize: 2048 },
 };
 
 const MIN_CLARITY = 0.85;
@@ -58,6 +63,13 @@ export function analyzeFrequency(
   if (clarity < MIN_CLARITY || frequency < minFrequency || frequency > maxFrequency) return null;
 
   const { note, octave, cents } = frequencyToNote(frequency);
+
+  // Clarinet has no fretboard — positions stay empty; the fingering diagram
+  // is looked up separately via getClarinetFingering().
+  if (!isStringInstrument(instrument)) {
+    return { note, octave, cents, frequency, positions: [] };
+  }
+
   const key = tuningKey ?? DEFAULT_TUNING_KEY[instrument];
   const fretboard = fretboards[instrument][key] ?? fretboards[instrument][DEFAULT_TUNING_KEY[instrument]];
   const positions = findNotePositions(fretboard, note, octave);
