@@ -36,7 +36,7 @@ export function Layout({
   children,
 }: LayoutProps) {
   const tunings = isStringInstrument(instrument) ? TUNINGS_BY_INSTRUMENT[instrument] : null;
-  const { profile, signOut, configured } = useAuth();
+  const { profile, configured } = useAuth();
   const showUser = configured && profile?.onboarding_complete;
 
   return (
@@ -47,45 +47,9 @@ export function Layout({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <Logo className="w-7 h-7 sm:w-8 sm:h-8 shrink-0" />
-              <h1 className="text-base sm:text-lg font-bold text-[var(--c-text-strong)] tracking-tight truncate">
-                Uke Sensei
-              </h1>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {showUser && profile?.display_name && (
-                <button
-                  onClick={() => onViewChange('profile')}
-                  title="View profile"
-                  className="hidden sm:inline-flex items-center gap-1.5 text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text-strong)] px-2 py-1 rounded-md hover:bg-[var(--c-surface)] transition"
-                >
-                  {profile.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt=""
-                      className="w-5 h-5 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <span className="w-5 h-5 rounded-full bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center text-[9px] font-semibold shrink-0">
-                      {profile.display_name.trim()[0]?.toUpperCase() ?? '?'}
-                    </span>
-                  )}
-                  <span className="truncate max-w-[100px]">{profile.display_name}</span>
-                </button>
-              )}
-              {showUser && (
-                <button
-                  onClick={() => {
-                    if (window.confirm('Reset your profile? This starts fresh with a new name, key, and email.')) {
-                      signOut();
-                    }
-                  }}
-                  title="Reset profile and start over"
-                  className="text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text-strong)] px-2 py-1 rounded-md hover:bg-[var(--c-surface)] transition"
-                >
-                  Reset profile
-                </button>
-              )}
               <button
                 onClick={onToggleTheme}
                 aria-label="Toggle theme"
