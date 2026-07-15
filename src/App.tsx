@@ -38,6 +38,15 @@ import { ClarinetPanel } from './components/ClarinetPanel';
 import { VoicePanel } from './components/VoicePanel';
 import { HandpanPanel } from './components/HandpanPanel';
 import { useHandpanSynth } from './audio/useHandpanSynth';
+import { CajonPanel } from './components/CajonPanel';
+import { useCajonSynth } from './audio/useCajonSynth';
+import { useOnsetDetection } from './audio/useOnsetDetection';
+import { useRhythmExercise, type CustomRhythmExerciseOptions } from './exercises/useRhythmExercise';
+import { CajonExerciseSelector } from './components/CajonExerciseSelector';
+import { RhythmExercisePlayer } from './components/RhythmExercisePlayer';
+import { RhythmFeedbackPanel } from './components/RhythmFeedbackPanel';
+import { CAJON_PATTERN_LIBRARY, getCajonPattern } from './exercises/cajonPatternLibrary';
+import { HIT_LABELS } from './exercises/cajonPatterns';
 import { FftVisualizer } from './components/FftVisualizer';
 import { SongRecorder } from './components/SongRecorder';
 import { getVoicingFretPositions } from './theory/chords';
@@ -54,6 +63,7 @@ export default function App() {
   const setView = useAppStore((s) => s.setView);
   const { profile } = useAuth();
   const detectedNote = useAppStore((s) => s.detectedNote);
+  const detectedHit = useAppStore((s) => s.detectedHit);
   const setListening = useAppStore((s) => s.setListening);
   const selectedRoot = useAppStore((s) => s.selectedRoot);
   const setSelectedRoot = useAppStore((s) => s.setSelectedRoot);
@@ -62,6 +72,7 @@ export default function App() {
   const showScale = useAppStore((s) => s.showScale);
   const setShowScale = useAppStore((s) => s.setShowScale);
   const clearExercise = useAppStore((s) => s.clearExercise);
+  const clearRhythmExercise = useAppStore((s) => s.clearRhythmExercise);
   const instrument = useAppStore((s) => s.instrument);
   const setInstrument = useAppStore((s) => s.setInstrument);
   const tuningKey = useAppStore((s) => s.tuningKey);
@@ -97,9 +108,13 @@ export default function App() {
     : instrument === 'handpan' ? handpanSynth
     : ukeSynth;
 
+  const cajonSynth = useCajonSynth();
+  useOnsetDetection(mic.getAnalyser, mic.isActive && instrument === 'cajon');
+
   const metronome = useMetronome();
   const recorder = useAudioRecorder();
   const { exercise, begin, beginCustom } = useExercise({ getNearestBeatOffset: metronome.getNearestBeatOffset });
+  const { rhythmExercise, beginCustom: beginCustomRhythm } = useRhythmExercise();
   // Chord detection/display only makes sense for chorded instruments like the ukulele.
   const detectedChord = useChordDetection(instrument === 'ukulele' ? detectedNote : null);
 
@@ -191,6 +206,28 @@ export default function App() {
     }
   }, [exercise?.isComplete]);
 
+  // When a rhythm exercise completes, stop the metronome and, for lesson
+  // checkpoints, mark the lesson complete if the player passed.
+  const wasRhythmCompleteRef = useRef(false);
+  useEffect(() => {
+    if (rhythmExercise?.isComplete && !wasRhythmCompleteRef.current) {
+      wasRhythmCompleteRef.current = true;
+      metronome.stop();
+
+      if (rhythmExercise.lessonId && rhythmExercise.requiredAccuracy != null) {
+        const total = rhythmExercise.targetSteps.length;
+        const correct = rhythmExercise.hitsPlayed.filter((h) => h.correct).length;
+        const acc = total > 0 ? correct / total : 0;
+        if (acc >= rhythmExercise.requiredAccuracy) {
+          syncCompleteLesson(rhythmExercise.lessonId);
+        }
+      }
+    }
+    if (!rhythmExercise?.isComplete) {
+      wasRhythmCompleteRef.current = false;
+    }
+  }, [rhythmExercise?.isComplete, metronome]);
+
   const handleMicToggle = useCallback(async () => {
     if (mic.isActive) {
       mic.stop();
@@ -211,6 +248,7 @@ export default function App() {
     requiredAccuracy?: number;
     bpm: number | null;
   }) => {
+    clearRhythmExercise();
     setSessionResult(null);
     session.clearSession();
     recorder.clearRecording();
@@ -233,7 +271,20 @@ export default function App() {
     }
 
     beginCustom(opts);
-  }, [beginCustom, metronome, session, recorder, mic, setListening]);
+  }, [beginCustom, metronome, session, recorder, mic, setListening, clearRhythmExercise]);
+
+  // Shared launcher for cajon rhythm exercises: checkpoints, practice drills,
+  // and the standalone groove library. Kept separate from startCustomExercise
+  // since rhythm exercises don't use the pitch-based session/recording flow.
+  const startCustomRhythmExercise = useCallback(async (opts: CustomRhythmExerciseOptions) => {
+    clearExercise();
+    if (!mic.isActive) {
+      await mic.start();
+      setListening(true);
+    }
+    metronome.setBpm(opts.bpm);
+    metronome.start(true, () => beginCustomRhythm(opts));
+  }, [mic, setListening, metronome, beginCustomRhythm, clearExercise]);
 
   const lastLoopsRef = useRef(3);
   const handleStartExercise = useCallback(async (bpm: number | null, loops: number = 3) => {
@@ -362,6 +413,66 @@ export default function App() {
     }
   }, [metronome, session, recorder, clearExercise, exercise, setView]);
 
+  const lastCajonPatternIdRef = useRef(CAJON_PATTERN_LIBRARY[0].id);
+
+  // Launches a standalone groove from the Cajon exercises tab (not a lesson).
+  const handleStartCajonExercise = useCallback((patternId: string, bpm: number, loops: number) => {
+    const pattern = getCajonPattern(patternId);
+    if (!pattern) return;
+    lastCajonPatternIdRef.current = patternId;
+    startCustomRhythmExercise({
+      pattern: pattern.pattern,
+      beatsPerLoop: pattern.beatsPerLoop,
+      loops,
+      bpm,
+      title: pattern.title,
+    });
+  }, [startCustomRhythmExercise]);
+
+  const handlePlayAgainRhythm = useCallback(() => {
+    if (!rhythmExercise) return;
+    // Replay the exact same flattened hit sequence as a single "loop" --
+    // mathematically identical to however many loops/pattern repeats it
+    // originally came from, since beatsPerLoop only matters for offsetting
+    // additional loops.
+    startCustomRhythmExercise({
+      pattern: rhythmExercise.targetSteps,
+      beatsPerLoop: rhythmExercise.targetSteps.length,
+      loops: 1,
+      bpm: rhythmExercise.bpm,
+      title: rhythmExercise.title ?? 'Rhythm Exercise',
+      lessonId: rhythmExercise.lessonId,
+      requiredAccuracy: rhythmExercise.requiredAccuracy,
+    });
+  }, [rhythmExercise, startCustomRhythmExercise]);
+
+  const handleNextRhythmExercise = useCallback(() => {
+    if (!rhythmExercise) return;
+
+    // Lesson exercises have no "next groove"; return to the lesson instead.
+    if (rhythmExercise.lessonId) {
+      const lessonId = rhythmExercise.lessonId;
+      clearRhythmExercise();
+      setSelectedLessonId(lessonId);
+      setView('lessons');
+      return;
+    }
+
+    const currentIdx = CAJON_PATTERN_LIBRARY.findIndex((p) => p.id === lastCajonPatternIdRef.current);
+    const next = CAJON_PATTERN_LIBRARY[(currentIdx + 1) % CAJON_PATTERN_LIBRARY.length];
+    handleStartCajonExercise(next.id, next.defaultBpm, next.defaultLoops);
+  }, [rhythmExercise, clearRhythmExercise, setSelectedLessonId, setView, handleStartCajonExercise]);
+
+  const handleStopRhythmExercise = useCallback(() => {
+    const lessonId = rhythmExercise?.lessonId;
+    metronome.stop();
+    clearRhythmExercise();
+    if (lessonId) {
+      setSelectedLessonId(lessonId);
+      setView('lessons');
+    }
+  }, [metronome, clearRhythmExercise, rhythmExercise, setView, setSelectedLessonId]);
+
   const handleSelectSession = useCallback((id: string) => {
     setSelectedSessionId(id);
     setView('playback');
@@ -376,10 +487,15 @@ export default function App() {
     if (!curriculum) return;
     const { checkpoint } = lesson;
     if (isRhythmCheckpoint(checkpoint)) {
-      // Rhythm (cajon) checkpoints aren't routed through the pitch-based
-      // exercise flow above; not yet reachable since no lesson currently
-      // has one, but guarded here so the type stays sound as that lands.
-      console.warn('Rhythm checkpoints are not yet wired into the lesson flow.');
+      startCustomRhythmExercise({
+        pattern: checkpoint.pattern,
+        beatsPerLoop: checkpoint.beatsPerLoop,
+        loops: checkpoint.loops,
+        bpm: checkpoint.bpm,
+        title: checkpoint.title,
+        lessonId: lesson.id,
+        requiredAccuracy: checkpoint.requiredAccuracy,
+      });
       return;
     }
     startCustomExercise({
@@ -391,7 +507,7 @@ export default function App() {
       requiredAccuracy: checkpoint.requiredAccuracy,
       bpm: checkpoint.bpm,
     });
-  }, [startCustomExercise, curriculum]);
+  }, [startCustomExercise, startCustomRhythmExercise, curriculum]);
 
   const handleStartCheckpoint = useCallback(() => {
     const lesson = selectedLessonId && curriculum ? curriculum.getLessonById(selectedLessonId) : undefined;
@@ -401,7 +517,14 @@ export default function App() {
   const handleStartPractice = useCallback((practice: PracticeExercise) => {
     if (!curriculum) return;
     if (isRhythmPractice(practice)) {
-      console.warn('Rhythm practice drills are not yet wired into the lesson flow.');
+      startCustomRhythmExercise({
+        pattern: practice.pattern,
+        beatsPerLoop: practice.beatsPerLoop,
+        loops: practice.loops,
+        bpm: practice.bpm,
+        title: practice.title,
+        lessonId: selectedLessonId ?? undefined,
+      });
       return;
     }
     startCustomExercise({
@@ -412,7 +535,7 @@ export default function App() {
       lessonId: selectedLessonId ?? undefined,
       bpm: practice.bpm,
     });
-  }, [startCustomExercise, selectedLessonId, curriculum]);
+  }, [startCustomExercise, startCustomRhythmExercise, selectedLessonId, curriculum]);
 
   const handleCheckpointContinue = useCallback(() => {
     const lessonId = exercise?.lessonId;
@@ -435,6 +558,26 @@ export default function App() {
     clearExercise();
     setView('lessons');
   }, [clearExercise, setView]);
+
+  const handleRhythmCheckpointContinue = useCallback(() => {
+    const lessonId = rhythmExercise?.lessonId;
+    clearRhythmExercise();
+    if (lessonId && curriculum) {
+      setSelectedLessonId(curriculum.getNextLessonId(lessonId));
+    }
+    setView('lessons');
+  }, [rhythmExercise, clearRhythmExercise, setView, curriculum, setSelectedLessonId]);
+
+  const handleRhythmCheckpointRetry = useCallback(() => {
+    const lessonId = rhythmExercise?.lessonId;
+    const lesson = lessonId && curriculum ? curriculum.getLessonById(lessonId) : undefined;
+    if (lesson) runCheckpoint(lesson);
+  }, [rhythmExercise, runCheckpoint, curriculum]);
+
+  const handleRhythmCheckpointExit = useCallback(() => {
+    clearRhythmExercise();
+    setView('lessons');
+  }, [clearRhythmExercise, setView]);
 
   const targetPosition = exercise && !exercise.isComplete
     ? exercise.targetPositions[exercise.currentNoteIndex] ?? null
@@ -471,6 +614,24 @@ export default function App() {
       onExit: handleCheckpointExit,
     };
   }, [exercise, handleCheckpointContinue, handleCheckpointRetry, handleCheckpointExit, curriculum]);
+
+  const rhythmCheckpointGate = useMemo(() => {
+    if (!rhythmExercise?.isComplete || !rhythmExercise.lessonId || rhythmExercise.requiredAccuracy == null) {
+      return null;
+    }
+    const total = rhythmExercise.targetSteps.length;
+    const correct = rhythmExercise.hitsPlayed.filter((h) => h.correct).length;
+    const accuracy = total > 0 ? correct / total : 0;
+    return {
+      passed: accuracy >= rhythmExercise.requiredAccuracy,
+      accuracy,
+      requiredAccuracy: rhythmExercise.requiredAccuracy,
+      isLastLesson: curriculum ? curriculum.getNextLessonId(rhythmExercise.lessonId) === null : true,
+      onContinue: handleRhythmCheckpointContinue,
+      onRetry: handleRhythmCheckpointRetry,
+      onExit: handleRhythmCheckpointExit,
+    };
+  }, [rhythmExercise, handleRhythmCheckpointContinue, handleRhythmCheckpointRetry, handleRhythmCheckpointExit, curriculum]);
 
   // Library and playback views render without the fretboard/exercise UI
   if (view === 'library') {
@@ -592,12 +753,24 @@ export default function App() {
         <FftVisualizer getAnalyser={mic.getAnalyser} isActive={mic.isActive} />
       </div>
 
-      {/* Priority 2: pitch feedback — always visible, centered on small screens */}
+      {/* Priority 2: pitch/hit feedback — always visible, centered on small screens */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
         <div className="flex items-center justify-center gap-3 sm:gap-5 order-1 sm:order-2">
-          <NoteDisplay note={detectedNote} />
-          <LiveStaff note={detectedNote} />
-          <CentsMeter cents={detectedNote?.cents ?? null} />
+          {instrument === 'cajon' ? (
+            <div className="text-sm text-[var(--c-text-muted)]">
+              {detectedHit ? (
+                <>Detected hit: <span className="text-[var(--c-accent)] font-semibold">{HIT_LABELS[detectedHit.type]}</span></>
+              ) : (
+                'No hit detected yet'
+              )}
+            </div>
+          ) : (
+            <>
+              <NoteDisplay note={detectedNote} />
+              <LiveStaff note={detectedNote} />
+              <CentsMeter cents={detectedNote?.cents ?? null} />
+            </>
+          )}
         </div>
         <div className="flex items-center justify-center sm:justify-start order-2 sm:order-1">
           <AudioStatus
@@ -628,6 +801,10 @@ export default function App() {
         ) : instrument === 'handpan' ? (
           <div className="mx-auto sm:mx-0">
             <HandpanPanel detectedNote={detectedNote} onPlayNote={synth.playNote} />
+          </div>
+        ) : instrument === 'cajon' ? (
+          <div className="mx-auto sm:mx-0">
+            <CajonPanel detectedHit={detectedHit} onPlayHit={cajonSynth.playHit} />
           </div>
         ) : (
           <>
@@ -729,10 +906,45 @@ export default function App() {
           </div>
         )}
 
+        {/* Rhythm exercise feedback (completed) */}
+        {rhythmExercise?.isComplete && (
+          <RhythmFeedbackPanel
+            exercise={rhythmExercise}
+            onPlayAgain={handlePlayAgainRhythm}
+            onNextExercise={handleNextRhythmExercise}
+            onBackToExercises={handleStopRhythmExercise}
+            checkpoint={rhythmCheckpointGate}
+            lessonContext={!!rhythmExercise.lessonId}
+          />
+        )}
+
+        {/* Rhythm exercise in progress */}
+        {rhythmExercise && !rhythmExercise.isComplete && (
+          <div className="max-w-md">
+            <RhythmExercisePlayer
+              exercise={rhythmExercise}
+              onStop={handleStopRhythmExercise}
+              countingIn={metronome.countingIn}
+              countInBeat={metronome.countInBeat}
+              metronome={{
+                bpm: metronome.bpm,
+                beatsPerMeasure: metronome.beatsPerMeasure,
+                isPlaying: metronome.isPlaying,
+                currentBeat: metronome.currentBeat,
+                onBpmChange: metronome.setBpm,
+                onBeatsChange: metronome.setBeatsPerMeasure,
+                onStart: metronome.start,
+                onStop: metronome.stop,
+                onTap: metronome.tap,
+              }}
+            />
+          </div>
+        )}
+
         {/* Free play controls */}
-        {view === 'freeplay' && !exercise && (
+        {view === 'freeplay' && !exercise && !rhythmExercise && (
           <div className="space-y-6">
-            {instrument !== 'clarinet' && instrument !== 'voice' && instrument !== 'handpan' && (
+            {instrument !== 'clarinet' && instrument !== 'voice' && instrument !== 'handpan' && instrument !== 'cajon' && (
               <FreePlayControls
                 root={selectedRoot}
                 scale={selectedScale}
@@ -778,12 +990,15 @@ export default function App() {
         )}
 
         {/* Exercise selector */}
-        {view === 'exercises' && !exercise && instrument === 'clarinet' && (
+        {view === 'exercises' && !exercise && !rhythmExercise && instrument === 'clarinet' && (
           <p className="text-sm text-[var(--c-text-muted)]">
             Exercises aren&apos;t available for clarinet yet — try Free Play to practice fingerings.
           </p>
         )}
-        {view === 'exercises' && !exercise && instrument !== 'clarinet' && (
+        {view === 'exercises' && !exercise && !rhythmExercise && instrument === 'cajon' && (
+          <CajonExerciseSelector onStart={handleStartCajonExercise} />
+        )}
+        {view === 'exercises' && !exercise && !rhythmExercise && instrument !== 'clarinet' && instrument !== 'cajon' && (
           <ExerciseSelector
             selectedRoot={selectedRoot}
             selectedScale={selectedScale}
