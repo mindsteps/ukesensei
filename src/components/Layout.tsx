@@ -117,6 +117,8 @@ export function Layout({
                 <option value="guitar">Guitar</option>
                 <option value="clarinet">Clarinet</option>
                 <option value="voice">Voice</option>
+                <option value="handpan">Handpan</option>
+                <option value="cajon">Cajón</option>
               </select>
 
               {tunings && (

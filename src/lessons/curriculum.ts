@@ -30,8 +30,13 @@ export interface CreateCurriculumOptions {
   id: string;
   title: string;
   description: string;
-  /** The board that this curriculum's `[string, fret]` position tuples are resolved against. */
-  referenceBoard: FretPosition[];
+  /**
+   * The board that this curriculum's `[string, fret]` position tuples are
+   * resolved against. Optional because rhythm curricula (cajon) have no
+   * pitch board at all -- their checkpoints/practice use `pattern` instead
+   * of `positions`, so `resolvePositions` is never called for them.
+   */
+  referenceBoard?: FretPosition[];
   modules: LessonModule[];
   lessons: Lesson[];
 }
@@ -40,6 +45,7 @@ export function createCurriculum(opts: CreateCurriculumOptions): Curriculum {
   const { id, title, description, referenceBoard, modules, lessons } = opts;
 
   function resolvePositions(tuples: [number, number][]): FretPosition[] {
+    if (!referenceBoard) throw new Error(`Curriculum "${id}" has no referenceBoard to resolve positions against`);
     return tuples.map(([string, fret]) => {
       const pos = referenceBoard.find((p) => p.string === string && p.fret === fret);
       if (!pos) throw new Error(`Invalid position s${string}f${fret} in curriculum "${id}"`);

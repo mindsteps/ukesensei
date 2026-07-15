@@ -24,7 +24,7 @@ export function SharedSessionView({ token }: { token: string }) {
         if (cancelled) return;
         setResult(r);
         if (r.audioPath) {
-          const url = await getSharedAudioUrl(r.audioPath);
+          const url = await getSharedAudioUrl(token, r.audioPath, r.audioProvider);
           if (!cancelled) setAudioUrl(url);
         }
       } catch (err) {

@@ -5,17 +5,26 @@ export type StringInstrument = 'ukulele' | 'bass' | 'guitar';
 
 /** Clarinet has no strings/frets — it uses a fingering diagram instead (see clarinetFingerings.ts). */
 /** Voice has no strings/frets either — it uses a vocal practice range instead (see voiceRange.ts). */
-export type Instrument = StringInstrument | 'clarinet' | 'voice';
+/** Handpan has no strings/frets either — it uses a fixed tone-field layout instead (see handpanLayout.ts). */
+/** Cajon is percussive with no stable pitch — it uses hit-type/rhythm grading instead (see cajonPatterns.ts). */
+export type Instrument = StringInstrument | 'clarinet' | 'voice' | 'handpan' | 'cajon';
 
 export function isStringInstrument(instrument: Instrument): instrument is StringInstrument {
   return instrument === 'ukulele' || instrument === 'bass' || instrument === 'guitar';
 }
 
+/** Cajon has no pitch at all — it's graded by hit type/timing via a separate rhythm-exercise system. */
+export function isRhythmInstrument(instrument: Instrument): instrument is 'cajon' {
+  return instrument === 'cajon';
+}
+
 /**
  * Whether an instrument supports the pitch-target exercise/lesson-checkpoint
- * system. Every instrument with a defined pitch board (fretboard or voice's
- * vocal range) supports it; clarinet only has a fingering chart, with no
- * board to generate exercise paths from yet.
+ * system. Every instrument with a defined pitch board (fretboard, voice's
+ * vocal range, or handpan's tone fields) supports it; clarinet only has a
+ * fingering chart, with no board to generate exercise paths from yet, and
+ * cajon uses its own rhythm-based exercise system instead (see
+ * isRhythmInstrument).
  */
 export function supportsExercises(instrument: Instrument): boolean {
   return instrument !== 'clarinet';

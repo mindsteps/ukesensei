@@ -36,11 +36,14 @@ import { useChordDetection } from './audio/useChordDetection';
 import { ChordDisplay } from './components/ChordDisplay';
 import { ClarinetPanel } from './components/ClarinetPanel';
 import { VoicePanel } from './components/VoicePanel';
+import { HandpanPanel } from './components/HandpanPanel';
+import { useHandpanSynth } from './audio/useHandpanSynth';
 import { FftVisualizer } from './components/FftVisualizer';
 import { SongRecorder } from './components/SongRecorder';
 import { getVoicingFretPositions } from './theory/chords';
 import { getCurriculumForInstrument } from './lessons/registry';
 import type { Lesson, PracticeExercise } from './lessons/types';
+import { isRhythmCheckpoint, isRhythmPractice } from './lessons/types';
 import type { FretPosition } from './theory/fretboard';
 import { syncCompleteLesson, syncResetLessonProgress } from './storage/progressSync';
 import { useUrlSync } from './routing/useUrlSync';
@@ -86,10 +89,12 @@ export default function App() {
   const guitarSynth = useGuitarSynth();
   const clarinetSynth = useClarinetSynth();
   const voiceSynth = useVoiceSynth();
+  const handpanSynth = useHandpanSynth();
   const synth = instrument === 'bass' ? bassSynth
     : instrument === 'guitar' ? guitarSynth
     : instrument === 'clarinet' ? clarinetSynth
     : instrument === 'voice' ? voiceSynth
+    : instrument === 'handpan' ? handpanSynth
     : ukeSynth;
 
   const metronome = useMetronome();
@@ -370,6 +375,13 @@ export default function App() {
   const runCheckpoint = useCallback((lesson: Lesson) => {
     if (!curriculum) return;
     const { checkpoint } = lesson;
+    if (isRhythmCheckpoint(checkpoint)) {
+      // Rhythm (cajon) checkpoints aren't routed through the pitch-based
+      // exercise flow above; not yet reachable since no lesson currently
+      // has one, but guarded here so the type stays sound as that lands.
+      console.warn('Rhythm checkpoints are not yet wired into the lesson flow.');
+      return;
+    }
     startCustomExercise({
       positions: curriculum.resolvePositions(checkpoint.positions),
       root: checkpoint.root,
@@ -388,6 +400,10 @@ export default function App() {
 
   const handleStartPractice = useCallback((practice: PracticeExercise) => {
     if (!curriculum) return;
+    if (isRhythmPractice(practice)) {
+      console.warn('Rhythm practice drills are not yet wired into the lesson flow.');
+      return;
+    }
     startCustomExercise({
       positions: curriculum.resolvePositions(practice.positions),
       root: practice.root,
@@ -609,6 +625,10 @@ export default function App() {
           <div className="mx-auto sm:mx-0">
             <VoicePanel detectedNote={detectedNote} onPlayNote={synth.playNote} />
           </div>
+        ) : instrument === 'handpan' ? (
+          <div className="mx-auto sm:mx-0">
+            <HandpanPanel detectedNote={detectedNote} onPlayNote={synth.playNote} />
+          </div>
         ) : (
           <>
             <div className="flex-1 bg-[var(--c-surface-half)] rounded-xl sm:rounded-2xl p-2 sm:p-4 border border-[var(--c-border-half)] min-w-0 order-1">
@@ -712,7 +732,7 @@ export default function App() {
         {/* Free play controls */}
         {view === 'freeplay' && !exercise && (
           <div className="space-y-6">
-            {instrument !== 'clarinet' && instrument !== 'voice' && (
+            {instrument !== 'clarinet' && instrument !== 'voice' && instrument !== 'handpan' && (
               <FreePlayControls
                 root={selectedRoot}
                 scale={selectedScale}

@@ -5,6 +5,7 @@ import type { ExerciseDirection } from './types';
 import type { NoteName } from '../theory/notes';
 import { generateFretboard, type FretPosition } from '../theory/fretboard';
 import { getVoiceRangeBoard } from '../theory/voiceRange';
+import { getHandpanBoard } from '../theory/handpanLayout';
 
 export interface CustomExerciseOptions {
   positions: FretPosition[];
@@ -39,7 +40,9 @@ export function useExercise(opts: UseExerciseOptions = {}) {
 
   const begin = useCallback(
     (root: NoteName, scaleKey: string, direction: ExerciseDirection = 'ascending', bpm: number | null = null, loops: number = 1) => {
-      const board = instrument === 'voice' ? getVoiceRangeBoard() : generateFretboard(tuning);
+      const board = instrument === 'voice' ? getVoiceRangeBoard()
+        : instrument === 'handpan' ? getHandpanBoard()
+        : generateFretboard(tuning);
       const config = createScaleExerciseFromBoard(root, scaleKey, board, direction);
       // Repeat the scale path for the requested number of loops
       let positions = config.positions;

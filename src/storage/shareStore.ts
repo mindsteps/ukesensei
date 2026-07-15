@@ -1,5 +1,6 @@
 import { getSupabase } from '../lib/supabase';
 import type { SessionDetail } from '../api/sessionApi';
+import { getSpacesDownloadUrlForShare } from './spacesRecordingStore';
 
 export interface ShareLink {
   id: string;
@@ -14,6 +15,7 @@ export interface SharedSessionResult {
   session: SessionDetail;
   sharedBy: string | null;
   audioPath: string | null;
+  audioProvider: 'supabase' | 'spaces';
 }
 
 function generateToken(): string {
@@ -103,7 +105,12 @@ export async function getSharedSession(token: string): Promise<SharedSessionResu
     endedAt: s.endedAt as number,
   };
 
-  return { session, sharedBy: row.sharedBy, audioPath: (s.audioPath as string | null) ?? null };
+  return {
+    session,
+    sharedBy: row.sharedBy,
+    audioPath: (s.audioPath as string | null) ?? null,
+    audioProvider: (s.audioProvider as 'supabase' | 'spaces' | undefined) ?? 'supabase',
+  };
 }
 
 /**
@@ -111,7 +118,19 @@ export async function getSharedSession(token: string): Promise<SharedSessionResu
  * already returned by getSharedSession() rather than re-calling the RPC, so
  * viewing a recording doesn't double-count as two views.
  */
-export async function getSharedAudioUrl(audioPath: string): Promise<string | null> {
+export async function getSharedAudioUrl(
+  token: string,
+  audioPath: string,
+  audioProvider: 'supabase' | 'spaces',
+): Promise<string | null> {
+  if (audioProvider === 'spaces') {
+    try {
+      return await getSpacesDownloadUrlForShare(token, audioPath);
+    } catch {
+      return null;
+    }
+  }
+
   const supabase = getSupabase();
   if (!supabase) return null;
 

@@ -1,5 +1,16 @@
 import { getSupabase } from '../lib/supabase';
 import type { SessionDetail, SessionSummary, UploadMetadata } from '../api/sessionApi';
+import { SPACES_UPLOAD_THRESHOLD_BYTES } from '../config/recordingStorage';
+import { uploadToSpaces, getSpacesDownloadUrl, deleteSpacesRecording } from './spacesRecordingStore';
+
+type AudioProvider = 'supabase' | 'spaces';
+
+async function getAccessToken(): Promise<string | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
 
 export function isCloudSessionId(id: string): boolean {
   return !id.startsWith('local-') && /^[0-9a-f-]{36}$/i.test(id);
@@ -57,16 +68,27 @@ export async function saveCloudSession(
   const sessionId = data.id as string;
 
   if (hasAudio && audioBlob) {
-    const path = `${userId}/${sessionId}.webm`;
-    const { error: uploadError } = await supabase.storage
-      .from('session-audio')
-      .upload(path, audioBlob, { contentType: audioBlob.type || 'audio/webm', upsert: true });
+    const useSpaces = audioBlob.size > SPACES_UPLOAD_THRESHOLD_BYTES;
+    let audioPath: string;
+    let provider: AudioProvider;
 
-    if (uploadError) throw uploadError;
+    if (useSpaces) {
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error('Not signed in');
+      audioPath = await uploadToSpaces(accessToken, audioBlob);
+      provider = 'spaces';
+    } else {
+      audioPath = `${userId}/${sessionId}.webm`;
+      const { error: uploadError } = await supabase.storage
+        .from('session-audio')
+        .upload(audioPath, audioBlob, { contentType: audioBlob.type || 'audio/webm', upsert: true });
+      if (uploadError) throw uploadError;
+      provider = 'supabase';
+    }
 
     await supabase
       .from('practice_sessions')
-      .update({ audio_path: path })
+      .update({ audio_path: audioPath, audio_provider: provider })
       .eq('id', sessionId);
   }
 
@@ -115,12 +137,22 @@ export async function getCloudAudioUrl(userId: string, sessionId: string): Promi
 
   const { data } = await supabase
     .from('practice_sessions')
-    .select('audio_path, has_audio')
+    .select('audio_path, has_audio, audio_provider')
     .eq('id', sessionId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (!data?.has_audio || !data.audio_path) return null;
+
+  if (data.audio_provider === 'spaces') {
+    const accessToken = await getAccessToken();
+    if (!accessToken) return null;
+    try {
+      return await getSpacesDownloadUrl(accessToken, data.audio_path);
+    } catch {
+      return null;
+    }
+  }
 
   const { data: signed, error } = await supabase.storage
     .from('session-audio')
@@ -136,13 +168,24 @@ export async function deleteCloudSession(userId: string, id: string): Promise<vo
 
   const { data } = await supabase
     .from('practice_sessions')
-    .select('audio_path')
+    .select('audio_path, audio_provider')
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (data?.audio_path) {
-    await supabase.storage.from('session-audio').remove([data.audio_path]);
+    if (data.audio_provider === 'spaces') {
+      const accessToken = await getAccessToken();
+      if (accessToken) {
+        try {
+          await deleteSpacesRecording(accessToken, data.audio_path);
+        } catch (err) {
+          console.warn('Failed to delete Spaces recording:', err);
+        }
+      }
+    } else {
+      await supabase.storage.from('session-audio').remove([data.audio_path]);
+    }
   }
 
   const { error } = await supabase

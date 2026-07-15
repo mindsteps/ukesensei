@@ -1,4 +1,5 @@
 import type { NoteName } from '../theory/notes';
+import type { RhythmStep } from '../exercises/cajonPatterns';
 
 export type LessonCategory = 'theory' | 'technique' | 'practice';
 
@@ -14,7 +15,7 @@ export type LessonContentBlock =
  * full FretPositions at runtime. The player must play them in order, plucking
  * one string at a time (monophonic), which is exactly how fingerpicking works.
  */
-export interface CheckpointDef {
+export interface PitchCheckpointDef {
   title: string;
   instructions: string;
   /** Root + scaleKey drive the fretboard scale overlay shown during the checkpoint. */
@@ -28,10 +29,33 @@ export interface CheckpointDef {
 }
 
 /**
+ * A rhythm checkpoint (cajon): the gating exercise is a hit-type + timing
+ * pattern rather than a pitch sequence, graded by useRhythmExercise.ts
+ * against real mic-detected onsets instead of pitch.
+ */
+export interface RhythmCheckpointDef {
+  title: string;
+  instructions: string;
+  pattern: RhythmStep[];
+  beatsPerLoop: number;
+  loops: number;
+  bpm: number;
+  /** Fraction of hits (0-1) that must be correct to pass and unlock the next lesson. */
+  requiredAccuracy: number;
+}
+
+export type CheckpointDef = PitchCheckpointDef | RhythmCheckpointDef;
+
+/** True for rhythm (cajon) checkpoints; false for pitch checkpoints (every other instrument). Distinguished by the presence of `pattern`, which only rhythm checkpoints have. */
+export function isRhythmCheckpoint(checkpoint: CheckpointDef): checkpoint is RhythmCheckpointDef {
+  return 'pattern' in checkpoint;
+}
+
+/**
  * A practice drill: a freely-playable exercise that is NOT gated. Lets the
  * player warm up and build toward the lesson's checkpoint.
  */
-export interface PracticeExercise {
+export interface PitchPracticeExercise {
   id: string;
   title: string;
   instructions: string;
@@ -39,6 +63,24 @@ export interface PracticeExercise {
   scaleKey: string;
   positions: [number, number][];
   bpm: number | null;
+}
+
+/** A freely-playable rhythm drill (cajon), NOT gated. */
+export interface RhythmPracticeExercise {
+  id: string;
+  title: string;
+  instructions: string;
+  pattern: RhythmStep[];
+  beatsPerLoop: number;
+  loops: number;
+  bpm: number;
+}
+
+export type PracticeExercise = PitchPracticeExercise | RhythmPracticeExercise;
+
+/** True for rhythm (cajon) practice drills; distinguished the same way as isRhythmCheckpoint. */
+export function isRhythmPractice(practice: PracticeExercise): practice is RhythmPracticeExercise {
+  return 'pattern' in practice;
 }
 
 export interface Lesson {

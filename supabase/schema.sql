@@ -186,6 +186,32 @@ $$;
 revoke all on function public.get_shared_session(text) from public;
 grant execute on function public.get_shared_session(text) to anon, authenticated;
 
+-- Lets the recordings API (api/recordings/download-url) confirm that a
+-- share token grants access to a given DigitalOcean Spaces object key,
+-- without exposing shared_links/practice_sessions to arbitrary readers.
+-- Mirrors get_shared_session's security-definer pattern.
+create or replace function public.verify_shared_audio_key(p_token text, p_key text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1
+    from public.shared_links sl
+    join public.practice_sessions ps on ps.id = sl.session_id
+    where sl.token = p_token
+      and sl.revoked_at is null
+      and ps.audio_path = p_key
+      and ps.audio_provider = 'spaces'
+  );
+end;
+$$;
+
+revoke all on function public.verify_shared_audio_key(text, text) from public;
+grant execute on function public.verify_shared_audio_key(text, text) to anon, authenticated;
+
 insert into storage.buckets (id, name, public)
 values ('session-audio', 'session-audio', false)
 on conflict (id) do nothing;

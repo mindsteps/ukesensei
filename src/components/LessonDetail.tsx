@@ -1,4 +1,5 @@
 import type { Lesson, PracticeExercise } from '../lessons/types';
+import { isRhythmCheckpoint } from '../lessons/types';
 import type { Curriculum } from '../lessons/curriculum';
 import { displayNote } from '../theory/notes';
 
@@ -130,11 +131,23 @@ export function LessonDetail({ curriculum, lesson, completed, onStartCheckpoint,
         <p className="text-sm text-[var(--c-text-muted)] mt-1 mb-3">{cp.instructions}</p>
 
         <div className="flex items-center gap-3 text-xs text-[var(--c-text-muted)] mb-4">
-          <span>Key: <span className="text-[var(--c-text-subtle)] font-medium">{displayNote(cp.root)}</span></span>
-          <span>·</span>
-          <span>{cp.positions.length} notes</span>
-          <span>·</span>
-          <span>{cp.bpm ? `${cp.bpm} BPM (metronome)` : 'Untimed'}</span>
+          {isRhythmCheckpoint(cp) ? (
+            <>
+              <span>{cp.pattern.length} hits/loop</span>
+              <span>·</span>
+              <span>{cp.loops} loops</span>
+              <span>·</span>
+              <span>{cp.bpm} BPM (metronome)</span>
+            </>
+          ) : (
+            <>
+              <span>Key: <span className="text-[var(--c-text-subtle)] font-medium">{displayNote(cp.root)}</span></span>
+              <span>·</span>
+              <span>{cp.positions.length} notes</span>
+              <span>·</span>
+              <span>{cp.bpm ? `${cp.bpm} BPM (metronome)` : 'Untimed'}</span>
+            </>
+          )}
         </div>
 
         <button

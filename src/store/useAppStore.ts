@@ -4,6 +4,7 @@ import type { FretPosition, Instrument, InstrumentTuning } from '../theory/fretb
 import { DEFAULT_TUNING_KEY, TUNINGS_BY_INSTRUMENT, isStringInstrument, supportsExercises } from '../theory/fretboard';
 import { pathToState } from '../routing/url';
 import { hasCurriculum } from '../lessons/registry';
+import type { CajonHitType, RhythmStep } from '../exercises/cajonPatterns';
 
 export type AppView = 'freeplay' | 'exercises' | 'lessons' | 'library' | 'playback' | 'admin' | 'about' | 'profile';
 export type TuningKey = string;
@@ -43,6 +44,37 @@ export interface ExerciseState {
   requiredAccuracy?: number;
 }
 
+export interface DetectedHit {
+  type: CajonHitType;
+  /** Peak RMS level of the onset, roughly 0-1. */
+  level: number;
+  timestamp: number;
+}
+
+export interface RhythmHitPlayed {
+  correct: boolean;
+  /** The hit type the mic actually detected for this step, or null if the step's timing window elapsed with no hit at all (a miss). */
+  hitType: CajonHitType | null;
+  beatOffsetMs: number | null;
+  timestamp: number;
+}
+
+export interface RhythmExerciseState {
+  /** Every expected hit across all loops, flattened, with `beat` as an absolute beat offset from the exercise start (loop N's steps are offset by N * beatsPerLoop). */
+  targetSteps: RhythmStep[];
+  currentStepIndex: number;
+  hitsPlayed: RhythmHitPlayed[];
+  isComplete: boolean;
+  startedAt: number | null;
+  bpm: number;
+  /** Optional custom title (used by lesson checkpoints instead of the pattern name). */
+  title?: string;
+  /** Set when this exercise is a lesson checkpoint; drives gating on completion. */
+  lessonId?: string;
+  /** Fraction of hits (0-1) required to pass a lesson checkpoint. */
+  requiredAccuracy?: number;
+}
+
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem('uke-sensei-theme');
@@ -55,7 +87,10 @@ const INSTRUMENT_KEY = 'uke-sensei-instrument';
 function getInitialInstrument(): Instrument {
   if (typeof window === 'undefined') return 'ukulele';
   const stored = localStorage.getItem(INSTRUMENT_KEY);
-  if (stored === 'ukulele' || stored === 'bass' || stored === 'guitar' || stored === 'clarinet' || stored === 'voice') return stored;
+  if (
+    stored === 'ukulele' || stored === 'bass' || stored === 'guitar' || stored === 'clarinet' ||
+    stored === 'voice' || stored === 'handpan' || stored === 'cajon'
+  ) return stored;
   return 'ukulele';
 }
 
@@ -95,6 +130,8 @@ interface AppState {
   setDetectedNote: (note: DetectedNote | null) => void;
   audioLevel: number;
   setAudioLevel: (level: number) => void;
+  detectedHit: DetectedHit | null;
+  setDetectedHit: (hit: DetectedHit | null) => void;
 
   // Fretboard
   fretboardInverted: boolean;
@@ -115,6 +152,13 @@ interface AppState {
   skipToIndex: (index: number, skippedCount: number) => void;
   completeExercise: () => void;
   clearExercise: () => void;
+
+  // Rhythm exercise (Cajon)
+  rhythmExercise: RhythmExerciseState | null;
+  startRhythmExercise: (exercise: RhythmExerciseState) => void;
+  advanceRhythmExercise: (correct: boolean, hitType: CajonHitType | null, beatOffsetMs?: number | null) => void;
+  completeRhythmExercise: () => void;
+  clearRhythmExercise: () => void;
 
   // Session playback
   selectedSessionId: string | null;
@@ -230,6 +274,8 @@ export const useAppStore = create<AppState>((set) => ({
   setDetectedNote: (detectedNote) => set({ detectedNote }),
   audioLevel: 0,
   setAudioLevel: (audioLevel) => set({ audioLevel }),
+  detectedHit: null,
+  setDetectedHit: (detectedHit) => set({ detectedHit }),
 
   fretboardInverted: false,
   setFretboardInverted: (fretboardInverted) => set({ fretboardInverted }),
@@ -282,6 +328,33 @@ export const useAppStore = create<AppState>((set) => ({
       return { exercise: { ...state.exercise, isComplete: true } };
     }),
   clearExercise: () => set({ exercise: null, view: 'exercises' }),
+
+  rhythmExercise: null,
+  startRhythmExercise: (rhythmExercise) => set({ rhythmExercise }),
+  advanceRhythmExercise: (correct, hitType, beatOffsetMs = null) =>
+    set((state) => {
+      if (!state.rhythmExercise || state.rhythmExercise.isComplete) return state;
+      const hitsPlayed: RhythmHitPlayed[] = [
+        ...state.rhythmExercise.hitsPlayed,
+        { correct, hitType, beatOffsetMs, timestamp: Date.now() },
+      ];
+      const nextIndex = state.rhythmExercise.currentStepIndex + 1;
+      const isComplete = nextIndex >= state.rhythmExercise.targetSteps.length;
+      return {
+        rhythmExercise: {
+          ...state.rhythmExercise,
+          hitsPlayed,
+          currentStepIndex: nextIndex,
+          isComplete,
+        },
+      };
+    }),
+  completeRhythmExercise: () =>
+    set((state) => {
+      if (!state.rhythmExercise) return state;
+      return { rhythmExercise: { ...state.rhythmExercise, isComplete: true } };
+    }),
+  clearRhythmExercise: () => set({ rhythmExercise: null, view: 'exercises' }),
 
   selectedSessionId: initialRoute.sessionId,
   setSelectedSessionId: (selectedSessionId) => set({ selectedSessionId }),
