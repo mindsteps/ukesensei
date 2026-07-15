@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { CHROMATIC_NOTES, type NoteName } from '../theory/notes';
 import { detectTuningFromNote, AUDIO_CONFIG_BY_INSTRUMENT } from './noteUtils';
 import type { Instrument } from '../theory/fretboard';
+import { logMetric, logEvent } from './audioDebugLog';
 
 const MIN_CLARITY = 0.85;
 const LEVEL_SMOOTHING = 0.3;
@@ -59,6 +60,7 @@ export function useWasmAudio() {
   const [wasmReady, setWasmReady] = useState(false);
   const smoothedLevelRef = useRef(0);
   const tuningAutoRef = useRef({ lowGCount: 0, highGCount: 0 });
+  const lastWorkletMsgAtRef = useRef<number | null>(null);
 
   const setDetectedNote = useAppStore((s) => s.setDetectedNote);
   const setAudioLevel = useAppStore((s) => s.setAudioLevel);
@@ -90,12 +92,24 @@ export function useWasmAudio() {
 
     const { frequency, clarity, midiNote, cents, rms } = data;
 
+    // Timing between worklet 'pitch' messages should be steady (~analyzeEveryN
+    // render quanta). Large/irregular gaps here point to audio-thread
+    // underruns or main-thread stalls delaying message delivery — i.e. real
+    // "buffering" — rather than a visualization bug.
+    const now = performance.now();
+    if (lastWorkletMsgAtRef.current != null) {
+      logMetric('worklet.msgDtMs', now - lastWorkletMsgAtRef.current);
+    }
+    lastWorkletMsgAtRef.current = now;
+
     const dbFS = rms > 0 ? 20 * Math.log10(rms) : -100;
     const normalizedLevel = Math.max(0, Math.min(1, (dbFS + 60) / 60));
     smoothedLevelRef.current =
       smoothedLevelRef.current * LEVEL_SMOOTHING +
       normalizedLevel * (1 - LEVEL_SMOOTHING);
     setAudioLevel(smoothedLevelRef.current);
+    logMetric('worklet.rms', rms);
+    logMetric('worklet.levelSmoothed', smoothedLevelRef.current);
 
     const { minFrequency, maxFrequency } = AUDIO_CONFIG_BY_INSTRUMENT[instrumentRef.current];
     if (frequency < minFrequency || frequency > maxFrequency || clarity < MIN_CLARITY) {
@@ -154,6 +168,22 @@ export function useWasmAudio() {
       });
 
       const audioContext = new AudioContext();
+      logEvent('AudioContext created', `state=${audioContext.state} sampleRate=${audioContext.sampleRate}`);
+      audioContext.onstatechange = () => {
+        // A context that suspends mid-session (tab backgrounding, OS power
+        // saving, some Bluetooth profile switches) will make levels/FFT
+        // drop to near-zero until it resumes — a very plausible cause of
+        // "fading in and out".
+        logEvent('AudioContext statechange', audioContext.state);
+      };
+
+      const micTrack = stream.getAudioTracks()[0];
+      if (micTrack) {
+        logEvent('mic track', `label=${micTrack.label} muted=${micTrack.muted} readyState=${micTrack.readyState}`);
+        micTrack.addEventListener('mute', () => logEvent('mic track muted'));
+        micTrack.addEventListener('unmute', () => logEvent('mic track unmuted'));
+        micTrack.addEventListener('ended', () => logEvent('mic track ended'));
+      }
 
       await audioContext.audioWorklet.addModule('/audio-worklet-processor.js');
 
@@ -248,6 +278,7 @@ export function useWasmAudio() {
     setIsActive(false);
     setWasmReady(false);
     smoothedLevelRef.current = 0;
+    lastWorkletMsgAtRef.current = null;
   }, []);
 
   const setGain = useCallback((value: number) => {

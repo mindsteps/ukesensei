@@ -32,7 +32,13 @@ export function VoicePanel({ detectedNote, onPlayNote }: VoicePanelProps) {
 
   return (
     <div className="bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] p-3 sm:p-4 flex flex-col items-center gap-3 w-full sm:w-[220px] lg:w-[240px]">
-      <VoiceRangeLadder active={active} cents={active.cents} size={150} opacity={active.opacity} />
+      <VoiceRangeLadder
+        active={active}
+        cents={active.cents}
+        onNoteClick={handlePick}
+        size={150}
+        opacity={active.opacity}
+      />
       <div className="text-[10px] text-[var(--c-text-muted)] -mt-1">
         {displayed ? 'Detected pitch' : 'Tap a note to hear & sing it'}
       </div>

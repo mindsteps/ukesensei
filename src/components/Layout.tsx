@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AppView, Instrument, TuningKey, Theme } from '../store/useAppStore';
 import { TUNINGS_BY_INSTRUMENT, isStringInstrument } from '../theory/fretboard';
 import { HANDPAN_LAYOUTS, HANDPAN_LAYOUT_KEYS, type HandpanLayoutKey } from '../theory/handpanLayout';
@@ -41,7 +41,7 @@ export function Layout({
   children,
 }: LayoutProps) {
   const tunings = isStringInstrument(instrument) ? TUNINGS_BY_INSTRUMENT[instrument] : null;
-  const { profile, configured } = useAuth();
+  const { profile, configured, signOut } = useAuth();
   const showUser = configured && profile?.onboarding_complete;
 
   return (
@@ -103,24 +103,12 @@ export function Layout({
 
             <div className="flex items-center gap-2 shrink-0">
               {showUser && profile?.display_name && (
-                <button
-                  onClick={() => onViewChange('profile')}
-                  title="View profile"
-                  className="flex items-center gap-1.5 text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text-strong)] px-2 py-1 rounded-md hover:bg-[var(--c-surface)] transition"
-                >
-                  {profile.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt=""
-                      className="w-5 h-5 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <span className="w-5 h-5 rounded-full bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center text-[9px] font-semibold shrink-0">
-                      {profile.display_name.trim()[0]?.toUpperCase() ?? '?'}
-                    </span>
-                  )}
-                  <span className="hidden sm:inline truncate max-w-[100px]">{profile.display_name}</span>
-                </button>
+                <UserMenu
+                  displayName={profile.display_name}
+                  avatarUrl={profile.avatar_url}
+                  onViewProfile={() => onViewChange('profile')}
+                  onSignOut={signOut}
+                />
               )}
               <button
                 onClick={onToggleTheme}
@@ -195,6 +183,84 @@ export function Layout({
       <main className="flex-1 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6 min-w-0">
         <div className="max-w-6xl mx-auto min-w-0">{children}</div>
       </main>
+    </div>
+  );
+}
+
+function UserMenu({
+  displayName,
+  avatarUrl,
+  onViewProfile,
+  onSignOut,
+}: {
+  displayName: string;
+  avatarUrl: string | null;
+  onViewProfile: () => void;
+  onSignOut: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={rootRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={displayName}
+        className="flex items-center gap-1.5 text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text-strong)] px-2 py-1 rounded-md hover:bg-[var(--c-surface)] transition"
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="w-5 h-5 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <span className="w-5 h-5 rounded-full bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center text-[9px] font-semibold shrink-0">
+            {displayName.trim()[0]?.toUpperCase() ?? '?'}
+          </span>
+        )}
+        <span className="hidden sm:inline truncate max-w-[100px]">{displayName}</span>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1 min-w-[140px] rounded-lg border border-[var(--c-border)] bg-[var(--c-surface)] shadow-lg py-1 z-20"
+        >
+          <button
+            role="menuitem"
+            onClick={() => { setOpen(false); onViewProfile(); }}
+            className="w-full text-left px-3 py-1.5 text-xs text-[var(--c-text)] hover:bg-[var(--c-bg)] transition"
+          >
+            View profile
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => { setOpen(false); onSignOut(); }}
+            className="w-full text-left px-3 py-1.5 text-xs text-[var(--c-text)] hover:bg-[var(--c-bg)] transition"
+          >
+            Log out
+          </button>
+        </div>
+      )}
     </div>
   );
 }

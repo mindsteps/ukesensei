@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { logMetric } from '../audio/audioDebugLog';
 
 interface FftVisualizerProps {
   getAnalyser: () => AnalyserNode | null;
@@ -23,6 +24,7 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const dataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const lastFrameAtRef = useRef<number | null>(null);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -44,6 +46,19 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
     const data = dataRef.current;
     const sampleRate = analyser.context.sampleRate;
     const binHz = sampleRate / (analyser.fftSize);
+
+    // rAF frame timing + overall spectrum level, timestamped, so a visual
+    // "fade in/out" can be correlated against actual stalls (large frameDt =
+    // dropped/delayed frames) vs. a genuine drop in signal (low avgLevel
+    // while frameDt stays normal).
+    const nowMs = performance.now();
+    if (lastFrameAtRef.current != null) {
+      logMetric('fft.frameDtMs', nowMs - lastFrameAtRef.current);
+    }
+    lastFrameAtRef.current = nowMs;
+    let levelSum = 0;
+    for (let i = 0; i < data.length; i++) levelSum += data[i];
+    logMetric('fft.avgLevel', levelSum / data.length / 255);
 
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth;
@@ -163,6 +178,8 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
       ctx.textAlign = 'center';
       ctx.fillText(`${Math.round(freq)} Hz`, px, labelBelow ? 22 : 10);
     };
+
+    logMetric('fft.peak1Val', peak1Val);
 
     if (peak1Val > 18) drawPeak(peak1Bin, accentColor, false);
     // Only require the second peak to clear the same noise floor as the

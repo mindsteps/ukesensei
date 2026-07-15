@@ -7,6 +7,8 @@ interface VoiceRangeLadderProps {
   /** Cents off the nearest semitone (-50..50). Lets the marker sit between
    * rows instead of snapping to whichever note is closest. */
   cents?: number | null;
+  /** Called when a row is clicked/tapped, to hear & select that note. */
+  onNoteClick?: (note: NoteName, octave: number) => void;
   size?: number;
   opacity?: number;
 }
@@ -30,7 +32,7 @@ function centsColor(cents: number): string {
  * a row, and its color/label show how far off-key the note is — like a
  * tuner needle laid along the practice range instead of centered on zero.
  */
-function VoiceRangeLadderInner({ active, cents, size = 150, opacity = 1 }: VoiceRangeLadderProps) {
+function VoiceRangeLadderInner({ active, cents, onNoteClick, size = 150, opacity = 1 }: VoiceRangeLadderProps) {
   const rows = [...VOICE_RANGE].reverse();
   const height = rows.length * ROW_HEIGHT;
   const width = size * (SVG_WIDTH / height);
@@ -61,19 +63,27 @@ function VoiceRangeLadderInner({ active, cents, size = 150, opacity = 1 }: Voice
       <svg viewBox={`0 0 ${SVG_WIDTH} ${height}`} width={width} height={size}>
         {rows.map((n, i) => {
           const isNatural = !n.note.includes('#');
+          const isRowActive = !!active && active.note === n.note && active.octave === n.octave;
           const y = i * ROW_HEIGHT;
+          const label = `${displayNote(n.note)}${n.octave}`;
           return (
-            <g key={n.midi}>
+            <g
+              key={n.midi}
+              onClick={onNoteClick ? () => onNoteClick(n.note, n.octave) : undefined}
+              style={onNoteClick ? { cursor: 'pointer' } : undefined}
+              role={onNoteClick ? 'button' : undefined}
+              aria-label={onNoteClick ? `Play ${label}` : undefined}
+            >
               <rect
                 x={4}
                 y={y + 1}
                 width={SVG_WIDTH - 8}
                 height={ROW_HEIGHT - 2}
                 rx={3}
-                fill="none"
+                fill={isRowActive ? 'currentColor' : 'none'}
                 stroke="currentColor"
                 strokeWidth={1}
-                opacity={isNatural ? 0.35 : 0.15}
+                opacity={isRowActive ? 0.25 : isNatural ? 0.35 : 0.15}
               />
               <text
                 x={SVG_WIDTH / 2}
@@ -84,8 +94,9 @@ function VoiceRangeLadderInner({ active, cents, size = 150, opacity = 1 }: Voice
                 fontWeight={600}
                 fill="currentColor"
                 opacity={isNatural ? 0.8 : 0.4}
+                style={{ pointerEvents: 'none' }}
               >
-                {displayNote(n.note)}{n.octave}
+                {label}
               </text>
             </g>
           );
