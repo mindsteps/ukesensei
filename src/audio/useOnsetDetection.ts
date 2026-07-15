@@ -54,7 +54,6 @@ function classifyHit(rms: number, freqData: Uint8Array<ArrayBuffer>, sampleRate:
 
 export function useOnsetDetection(getAnalyser: () => AnalyserNode | null, isActive: boolean) {
   const setDetectedHit = useAppStore((s) => s.setDetectedHit);
-  const rafRef = useRef<number | null>(null);
   const bufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const freqBufferRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const floorRef = useRef(0.01);
@@ -111,20 +110,6 @@ export function useOnsetDetection(getAnalyser: () => AnalyserNode | null, isActi
     }
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [isActive, detect, setDetectedHit]);
-}
-
-  useEffect(() => {
-    if (isActive) {
-      floorRef.current = 0.01;
-      lastOnsetAtRef.current = 0;
-      rafRef.current = requestAnimationFrame(detect);
-    } else {
-      setDetectedHit(null);
-    }
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [isActive, detect, setDetectedHit]);
 }
