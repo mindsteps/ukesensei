@@ -133,9 +133,10 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
     let peak2Val = 0;
     if (peak1Bin >= 0) {
       const peak1Freq = peak1Bin * binHz;
-      // Exclude bins close to the primary peak (~ a semitone) so we don't
-      // just pick a point on the same peak's skirt.
-      const exclusionHz = peak1Freq * 0.06;
+      // Exclude only bins right on top of the primary peak (~ a quarter-tone)
+      // so we don't just pick a point on the same peak's skirt, while still
+      // allowing genuinely close second notes to show.
+      const exclusionHz = Math.max(peak1Freq * 0.02, binHz * 2);
       for (let i = minBin; i <= maxBin; i++) {
         if (Math.abs(i * binHz - peak1Freq) < exclusionHz) continue;
         if (data[i] > peak2Val && isLocalPeak(i)) {
@@ -164,9 +165,10 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
     };
 
     if (peak1Val > 18) drawPeak(peak1Bin, accentColor, false);
-    // Only surface the second peak if it's a real, sizeable feature — not
-    // noise trailing off the primary peak.
-    if (peak2Bin >= 0 && peak2Val > 18 && peak2Val > peak1Val * 0.35) {
+    // Only require the second peak to clear the same noise floor as the
+    // primary one — a much lower bar than before, so quieter second notes
+    // (e.g. in an interval/chord) still show up.
+    if (peak2Bin >= 0 && peak2Val > 14 && peak2Val > peak1Val * 0.1) {
       drawPeak(peak2Bin, secondaryColor, true);
     }
 
