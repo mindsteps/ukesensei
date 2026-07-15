@@ -103,7 +103,9 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
       if (bin >= bufLen) break;
 
       const x = freqToX(freq);
-      const val = data[bin] / 255;
+      // Square-root response so quieter / non-tonal signal (strums, noise,
+      // breath) is still visibly represented, not just loud sustained notes.
+      const val = Math.sqrt(data[bin] / 255);
       const barH = val * (h - 16);
 
       if (barH > 0.5) {
@@ -123,7 +125,7 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
       }
     }
 
-    if (peakVal > 30) {
+    if (peakVal > 18) {
       const peakFreq = peakBin * binHz;
       const px = freqToX(peakFreq);
       ctx.strokeStyle = accentColor;

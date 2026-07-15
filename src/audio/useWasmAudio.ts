@@ -199,7 +199,10 @@ export function useWasmAudio() {
 
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 4096;
-      analyser.smoothingTimeConstant = 0.8;
+      // Low smoothing keeps the FFT visualizer reacting to whatever is
+      // currently at the mic (plucks, noise, chords) instead of only
+      // building up visible energy for sustained, tonal (pure) notes.
+      analyser.smoothingTimeConstant = 0.15;
 
       // A MediaStreamAudioDestinationNode gives the recorder a real MediaStream
       // that reflects the EQ'd signal, instead of recording the raw mic input.
