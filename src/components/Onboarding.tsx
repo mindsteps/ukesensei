@@ -89,50 +89,63 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   const suggestedEmail = useMemo(() => profile?.contact_email || defaultEmailFromUser(user), [user, profile]);
   const [step, setStep] = useState(0);
   const [displayName, setDisplayName] = useState(suggestedName);
-  const [keyText, setKeyText] = useState<string>(profile?.preferred_key ?? '');
-  const [showKey, setShowKey] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [contactEmail, setContactEmail] = useState(suggestedEmail);
   const [saving, setSaving] = useState(false);
-  const [checkingKey, setCheckingKey] = useState(false);
-  const [keyError, setKeyError] = useState<string | null>(null);
+  const [checkingPassword, setCheckingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isEditing = !!profile?.onboarding_complete;
 
-  const parsedKey = useMemo(() => parseKeyInput(keyText), [keyText]);
-  const keyInvalid = keyText.trim() !== '' && !parsedKey;
+  // Editing an existing profile: the password field is optional (blank
+  // means "keep my current password"). First-time setup requires one.
+  const passwordInvalid = isEditing
+    ? password.trim() !== '' && password.trim().length < MIN_PASSWORD_LENGTH
+    : password.trim().length > 0 && password.trim().length < MIN_PASSWORD_LENGTH;
+  const passwordValid = isEditing ? !passwordInvalid : password.trim().length >= MIN_PASSWORD_LENGTH;
   const emailValid = contactEmail.trim() === '' || EMAIL_RE.test(contactEmail.trim());
 
-  const handleKeyContinue = async () => {
-    if (!parsedKey) return;
+  const handlePasswordContinue = async () => {
+    if (!passwordValid) return;
     if (isEditing) {
       setStep(2);
       return;
     }
-    setCheckingKey(true);
-    setKeyError(null);
+    setCheckingPassword(true);
+    setPasswordError(null);
     try {
-      const result = await claimIdentity(displayName, parsedKey);
+      const result = await claimIdentity(displayName, password.trim());
       if (result === 'resumed') {
         // AuthGate will notice the restored session and swap straight into
         // the app once the profile loads — nothing else to do here.
         return;
       }
       if (result === 'taken') {
-        setKeyError(`That's not ${displayName.trim()}'s key. Try another key, or use a different name.`);
+        setPasswordError(`That's not ${displayName.trim()}'s key. Try again, or use a different name.`);
+        return;
+      }
+      if (result === 'error') {
+        setPasswordError('Something went wrong on our end — please try again in a moment.');
         return;
       }
     } finally {
-      setCheckingKey(false);
+      setCheckingPassword(false);
     }
     setStep(2);
   };
 
   const handleFinish = async () => {
-    if (!parsedKey) return;
+    if (!passwordValid) return;
     setSaving(true);
     setError(null);
     try {
-      await completeOnboarding(displayName, parsedKey, contactEmail);
+      // For a brand-new signup, claimIdentity() already linked the
+      // email+key in step 1 — re-sending the same password here would
+      // just make Supabase reject it for being unchanged. Only editing an
+      // existing profile needs completeOnboarding to (re-)apply the key.
+      const passwordToApply = isEditing ? (password.trim() || undefined) : undefined;
+      await completeOnboarding(displayName, contactEmail, passwordToApply);
       onComplete?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your profile. Please try again.');
@@ -209,11 +222,12 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
                   className="text-3xl font-semibold text-[var(--c-text-strong)] mt-2 tracking-tight"
                   style={{ fontFamily: 'var(--font-arty)' }}
                 >
-                  What is the key?
+                  What is your key?
                 </h1>
                 <p className="text-sm text-[var(--c-text-muted)] mt-2">
-                  Hi {displayName.trim()}! Your key is your passphrase — it&apos;s also your default for exercises and free play.
-                  {!isEditing && ' The same name and key will bring your profile back on any device.'}
+                  {isEditing
+                    ? `Hi ${displayName.trim()}! Your key is your password — leave this blank to keep your current one, or enter a new one.`
+                    : `Hi ${displayName.trim()}! Your key is your password. The same name and key will bring your profile back on any device.`}
                 </p>
               </div>
               <div className="relative">
@@ -221,24 +235,24 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
                   <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
                 </svg>
                 <input
-                  type={showKey ? 'text' : 'password'}
-                  value={keyText}
-                  onChange={(e) => { setKeyText(e.target.value); setKeyError(null); }}
-                  placeholder="Your key (e.g. C, F#, Bb…)"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setPasswordError(null); }}
+                  placeholder={isEditing ? 'New key (optional)' : 'Your key'}
                   autoFocus
-                  autoComplete="off"
-                  maxLength={3}
+                  autoComplete="new-password"
+                  maxLength={72}
                   className={`w-full pl-11 pr-11 py-3 rounded-xl bg-[var(--c-bg)] border text-[var(--c-text)] text-lg placeholder:text-[var(--c-text-muted)] focus:outline-none transition-colors ${
-                    keyInvalid ? 'border-red-400/60' : 'border-[var(--c-border)] focus:border-emerald-400/60'
+                    passwordInvalid ? 'border-red-400/60' : 'border-[var(--c-border)] focus:border-emerald-400/60'
                   }`}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowKey((v) => !v)}
-                  aria-label={showKey ? 'Hide key' : 'Show key'}
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide key' : 'Show key'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full text-[var(--c-text-muted)] hover:text-[var(--c-text)] hover:bg-[var(--c-border)]/40 transition"
                 >
-                  {showKey ? (
+                  {showPassword ? (
                     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                       <path d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-4.38 1.651 1.651 0 000-1.185A10.004 10.004 0 009.999 3a9.956 9.956 0 00-4.744 1.194L3.28 2.22zM7.752 6.69l1.092 1.092a2.5 2.5 0 013.374 3.373l1.092 1.092a4 4 0 00-5.558-5.557z" />
                       <path d="M10.748 13.93l2.523 2.523a9.987 9.987 0 01-3.27.547c-4.258 0-7.894-2.66-9.337-6.41a1.651 1.651 0 010-1.186A10.007 10.007 0 012.839 6.02L6.07 9.252a4 4 0 004.678 4.678z" />
@@ -251,29 +265,14 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
                   )}
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {CHROMATIC_NOTES.map((note) => (
-                  <button
-                    key={note}
-                    onClick={() => { setKeyText(note); setKeyError(null); }}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      parsedKey === note
-                        ? 'bg-emerald-600/80 text-white'
-                        : 'bg-[var(--c-bg)] text-[var(--c-text-muted)] border border-[var(--c-border)] hover:border-emerald-500/50'
-                    }`}
-                  >
-                    {note}
-                  </button>
-                ))}
-              </div>
-              {keyInvalid && (
-                <p className="text-xs text-red-400">Not a key we know — try C, C#, D, D#, E, F, F#, G, G#, A, A#, or B (flats work too).</p>
+              {passwordInvalid && (
+                <p className="text-xs text-red-400">Your key needs to be at least {MIN_PASSWORD_LENGTH} characters.</p>
               )}
-              {keyError && (
+              {passwordError && (
                 <div className="rounded-xl bg-red-500/10 border border-red-400/30 px-4 py-3 space-y-2">
-                  <p className="text-xs text-red-400">{keyError}</p>
+                  <p className="text-xs text-red-400">{passwordError}</p>
                   <button
-                    onClick={() => { setKeyError(null); setStep(0); }}
+                    onClick={() => { setPasswordError(null); setStep(0); }}
                     className="text-xs font-medium text-[var(--c-accent)] hover:underline"
                   >
                     Use a different name instead →
@@ -288,11 +287,11 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
                   Back
                 </button>
                 <button
-                  onClick={handleKeyContinue}
-                  disabled={checkingKey || !parsedKey}
+                  onClick={handlePasswordContinue}
+                  disabled={checkingPassword || !passwordValid}
                   className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-medium hover:from-emerald-500 hover:to-teal-500 transition disabled:opacity-50"
                 >
-                  {checkingKey ? 'Unlocking…' : 'Continue'}
+                  {checkingPassword ? 'Unlocking…' : 'Continue'}
                 </button>
               </div>
             </div>

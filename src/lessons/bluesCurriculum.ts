@@ -1,4 +1,4 @@
-import { TUNINGS } from '../theory/fretboard';
+import { TUNINGS, generateFretboard } from '../theory/fretboard';
 import type { Lesson, LessonModule } from './types';
 import { createCurriculum } from './curriculum';
 
@@ -557,7 +557,7 @@ export const bluesCurriculum = createCurriculum({
   id: 'ukulele-fingerpicking-blues',
   title: 'Fingerpicking Blues',
   description: 'A guided path from open strings to a full 12-bar fingerstyle chorus.',
-  referenceTuning: TUNINGS.low_g,
+  referenceBoard: generateFretboard(TUNINGS.low_g),
   modules: MODULES,
   lessons: LESSONS,
 });

@@ -7,6 +7,7 @@ import { useUkeSynth } from './audio/useUkeSynth';
 import { useBassSynth } from './audio/useBassSynth';
 import { useGuitarSynth } from './audio/useGuitarSynth';
 import { useClarinetSynth } from './audio/useClarinetSynth';
+import { useVoiceSynth } from './audio/useVoiceSynth';
 import { useExercise } from './exercises/useExercise';
 import { useSession, type SessionResult } from './exercises/useSession';
 import { uploadSession, triggerAnalysis, type UploadMetadata } from './api/sessionApi';
@@ -27,11 +28,13 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { AdminSignIn } from './components/AdminSignIn';
 import { LessonPath } from './components/LessonPath';
 import { LessonDetail } from './components/LessonDetail';
+import { About } from './components/About';
 import { SCALE_DEFINITIONS, SCALE_KEYS } from './theory/scales';
 import { CHROMATIC_NOTES, type NoteName } from './theory/notes';
 import { useChordDetection } from './audio/useChordDetection';
 import { ChordDisplay } from './components/ChordDisplay';
 import { ClarinetPanel } from './components/ClarinetPanel';
+import { VoicePanel } from './components/VoicePanel';
 import { FftVisualizer } from './components/FftVisualizer';
 import { SongRecorder } from './components/SongRecorder';
 import { getVoicingFretPositions } from './theory/chords';
@@ -81,9 +84,11 @@ export default function App() {
   const bassSynth = useBassSynth();
   const guitarSynth = useGuitarSynth();
   const clarinetSynth = useClarinetSynth();
+  const voiceSynth = useVoiceSynth();
   const synth = instrument === 'bass' ? bassSynth
     : instrument === 'guitar' ? guitarSynth
     : instrument === 'clarinet' ? clarinetSynth
+    : instrument === 'voice' ? voiceSynth
     : ukeSynth;
 
   const metronome = useMetronome();
@@ -475,6 +480,18 @@ export default function App() {
     );
   }
 
+  if (view === 'about') {
+    return (
+      <Layout view={view} onViewChange={setView} instrument={instrument} onInstrumentChange={setInstrument}
+        tuningKey={tuningKey} onTuningChange={setTuning}
+        tuningAutoDetected={tuningAutoDetected} theme={theme} onToggleTheme={toggleTheme}
+        lessonsAvailable={!!curriculum}
+        exercisesAvailable={instrument !== 'clarinet'}>
+        <About />
+      </Layout>
+    );
+  }
+
   if (view === 'admin') {
     if (!profile?.is_admin) {
       return (
@@ -541,7 +558,12 @@ export default function App() {
       lessonsAvailable={!!curriculum}
       exercisesAvailable={instrument !== 'clarinet'}
     >
-      {/* Priority 1: pitch feedback — always visible, centered on small screens */}
+      {/* Priority 1: FFT spectrum — always-live real-time feedback, shown first */}
+      <div className="mb-3 sm:mb-4">
+        <FftVisualizer getAnalyser={mic.getAnalyser} isActive={mic.isActive} />
+      </div>
+
+      {/* Priority 2: pitch feedback — always visible, centered on small screens */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
         <div className="flex items-center justify-center gap-3 sm:gap-5 order-1 sm:order-2">
           <NoteDisplay note={detectedNote} />
@@ -564,11 +586,15 @@ export default function App() {
         </div>
       </div>
 
-      {/* Priority 2: fretboard/fingering — primary practice surface */}
+      {/* Priority 3: fretboard/fingering — primary practice surface */}
       <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 mb-3 sm:mb-4 lg:mb-6">
         {instrument === 'clarinet' ? (
           <div className="mx-auto sm:mx-0">
             <ClarinetPanel detectedNote={detectedNote} onPlayNote={synth.playNote} />
+          </div>
+        ) : instrument === 'voice' ? (
+          <div className="mx-auto sm:mx-0">
+            <VoicePanel detectedNote={detectedNote} onPlayNote={synth.playNote} />
           </div>
         ) : (
           <>
@@ -631,11 +657,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Priority 3: FFT spectrum — secondary diagnostic, compact on mobile */}
-      <div className="mb-3 sm:mb-4">
-        <FftVisualizer getAnalyser={mic.getAnalyser} isActive={mic.isActive} />
-      </div>
-
       {/* Priority 4: exercise / free-play controls */}
       <div className="min-h-[120px] sm:min-h-[200px]">
         {/* Exercise feedback (completed) */}
@@ -656,6 +677,7 @@ export default function App() {
           <div className="max-w-md">
             <ExercisePlayer
               exercise={exercise}
+              instrument={instrument}
               onStop={handleStopExercise}
               countingIn={metronome.countingIn}
               countInBeat={metronome.countInBeat}
@@ -677,7 +699,7 @@ export default function App() {
         {/* Free play controls */}
         {view === 'freeplay' && !exercise && (
           <div className="space-y-6">
-            {instrument !== 'clarinet' && (
+            {instrument !== 'clarinet' && instrument !== 'voice' && (
               <FreePlayControls
                 root={selectedRoot}
                 scale={selectedScale}

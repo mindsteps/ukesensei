@@ -4,10 +4,21 @@ import { type NoteName, semitoneToNote, noteToSemitone } from './notes';
 export type StringInstrument = 'ukulele' | 'bass' | 'guitar';
 
 /** Clarinet has no strings/frets — it uses a fingering diagram instead (see clarinetFingerings.ts). */
-export type Instrument = StringInstrument | 'clarinet';
+/** Voice has no strings/frets either — it uses a vocal practice range instead (see voiceRange.ts). */
+export type Instrument = StringInstrument | 'clarinet' | 'voice';
 
 export function isStringInstrument(instrument: Instrument): instrument is StringInstrument {
   return instrument === 'ukulele' || instrument === 'bass' || instrument === 'guitar';
+}
+
+/**
+ * Whether an instrument supports the pitch-target exercise/lesson-checkpoint
+ * system. Every instrument with a defined pitch board (fretboard or voice's
+ * vocal range) supports it; clarinet only has a fingering chart, with no
+ * board to generate exercise paths from yet.
+ */
+export function supportsExercises(instrument: Instrument): boolean {
+  return instrument !== 'clarinet';
 }
 
 export interface FretPosition {

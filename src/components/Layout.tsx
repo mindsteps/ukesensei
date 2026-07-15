@@ -120,6 +120,12 @@ export function Layout({
                 >
                   Clarinet
                 </NavButton>
+                <NavButton
+                  active={instrument === 'voice'}
+                  onClick={() => onInstrumentChange('voice')}
+                >
+                  Voice
+                </NavButton>
               </div>
 
               {tunings && (
@@ -178,6 +184,12 @@ export function Layout({
                   Admin
                 </NavButton>
               )}
+              <NavButton
+                active={view === 'about'}
+                onClick={() => onViewChange('about')}
+              >
+                About
+              </NavButton>
             </nav>
           </div>
         </div>

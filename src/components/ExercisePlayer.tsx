@@ -1,11 +1,12 @@
-import type { ExerciseState } from '../store/useAppStore';
+import type { ExerciseState, Instrument } from '../store/useAppStore';
 import { displayNote } from '../theory/notes';
 import { SCALE_DEFINITIONS } from '../theory/scales';
-import { getPositionId } from '../theory/fretboard';
+import { getPositionId, isStringInstrument } from '../theory/fretboard';
 import { Metronome } from './Metronome';
 
 interface ExercisePlayerProps {
   exercise: ExerciseState;
+  instrument: Instrument;
   onStop: () => void;
   countingIn?: boolean;
   countInBeat?: number;
@@ -22,7 +23,7 @@ interface ExercisePlayerProps {
   };
 }
 
-export function ExercisePlayer({ exercise, onStop, countingIn, countInBeat, metronome }: ExercisePlayerProps) {
+export function ExercisePlayer({ exercise, instrument, onStop, countingIn, countInBeat, metronome }: ExercisePlayerProps) {
   const scaleDef = SCALE_DEFINITIONS[exercise.scaleKey];
   const totalNotes = exercise.targetPositions.length;
   const currentIndex = exercise.currentNoteIndex;
@@ -98,9 +99,11 @@ export function ExercisePlayer({ exercise, onStop, countingIn, countInBeat, metr
           <div className="text-3xl font-bold text-amber-300">
             {displayNote(currentTarget.note)}
           </div>
-          <div className="text-xs text-[var(--c-text-muted)] mt-1">
-            String {currentTarget.string + 1}, Fret {currentTarget.fret}
-          </div>
+          {isStringInstrument(instrument) && (
+            <div className="text-xs text-[var(--c-text-muted)] mt-1">
+              String {currentTarget.string + 1}, Fret {currentTarget.fret}
+            </div>
+          )}
         </div>
       )}
 

@@ -33,9 +33,11 @@ interface AuthContextValue {
    * Display name → username, chosen password → password. Same name +
    * same password resumes the same profile from any device; a name
    * already taken with a different password is rejected like a wrong
-   * password.
+   * password. 'error' means something unexpected happened (e.g. a
+   * transient network/rate-limit issue) — distinct from a real name
+   * conflict so the UI doesn't misreport it as "wrong password".
    */
-  claimIdentity: (name: string, password: string) => Promise<'resumed' | 'linked' | 'taken'>;
+  claimIdentity: (name: string, password: string) => Promise<'resumed' | 'linked' | 'taken' | 'error'>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -48,9 +50,36 @@ function slugifyName(name: string): string {
     .replace(/^-+|-+$/g, '') || 'player';
 }
 
-/** Deterministic pseudo-email for a display name. `.invalid` is reserved by RFC 2606 — never a real inbox. */
+/**
+ * Deterministic pseudo-email for a display name. Never a real inbox — but
+ * it must live on a domain with real DNS records, because Supabase Auth
+ * rejects addresses whose domain has no A/MX record (`invalid_email_dns`).
+ * RFC 2606-reserved domains like `.invalid` deliberately never resolve, so
+ * they get rejected by that check (inconsistently, depending on caching) —
+ * we use our own real deployment domain instead, which always resolves.
+ */
 function credentialEmail(name: string): string {
-  return `${slugifyName(name)}@ukesensei.invalid`;
+  return `${slugifyName(name)}@ukesensei.vercel.app`;
+}
+
+/**
+ * Interprets an error from updating the login credential (email/password).
+ * Only a genuine name conflict should read as "that name is taken" — errors
+ * like "same as current value" mean there was nothing to change (safe to
+ * ignore), and anything else is unexpected and worth logging rather than
+ * misreporting as a naming conflict.
+ */
+function handleCredentialUpdateError(credError: { code?: string; message?: string } | null): void {
+  if (!credError) return;
+  if (credError.code === 'email_exists' || credError.code === 'user_already_exists') {
+    throw new Error('That name is already taken with a different key — try another name or key.');
+  }
+  if (credError.code === 'same_password' || credError.code === 'same_email') {
+    // Nothing actually changed — not an error.
+    return;
+  }
+  console.error('Failed to update login credential:', credError);
+  throw new Error('Something went wrong saving your key — please try again.');
 }
 
 async function loadProfile(userId: string): Promise<UserProfile | null> {
@@ -172,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const claimIdentity = useCallback(async (name: string, password: string) => {
     const supabase = getSupabase();
-    if (!supabase) return 'taken' as const;
+    if (!supabase) return 'error' as const;
 
     const email = credentialEmail(name);
 
@@ -183,6 +212,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!signInError && signInData.session) {
       return 'resumed' as const;
     }
+    if (signInError && signInError.code !== 'invalid_credentials') {
+      // Anything other than "wrong password" here (rate limiting, network
+      // issues, etc.) is worth knowing about rather than silently falling
+      // through to the claim attempt below.
+      console.warn('Unexpected error checking existing identity:', signInError);
+    }
 
     // Otherwise, claim this name+password for the current session. This
     // upgrades an anonymous session into a permanent one (Supabase's
@@ -190,7 +225,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // account.
     const { error: updateError } = await supabase.auth.updateUser({ email, password });
     if (updateError) {
-      // Most likely: that name is already registered under a different password.
+      // Only a genuine "that name is already registered" conflict should
+      // read as "wrong password" — anything else (rate limits, network
+      // blips, etc.) gets surfaced as a real error instead of being
+      // misreported as a credential mismatch.
+      const isNameConflict = updateError.code === 'email_exists' || updateError.code === 'user_already_exists';
+      if (!isNameConflict) {
+        console.error('Failed to claim identity:', updateError);
+        return 'error' as const;
+      }
       return 'taken' as const;
     }
     return 'linked' as const;
@@ -220,18 +263,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: credentialEmail(displayName),
         password,
       });
-      if (credError) {
-        throw new Error('That name is already taken with a different password — try another name or password.');
-      }
+      handleCredentialUpdateError(credError);
     } else if (!profile?.is_admin && profile?.onboarding_complete) {
       // Editing without changing the password — still keep the login email
       // in sync in case the display name changed.
       const { error: credError } = await supabase.auth.updateUser({
         email: credentialEmail(displayName),
       });
-      if (credError) {
-        throw new Error('That name is already taken — try another name.');
-      }
+      handleCredentialUpdateError(credError);
     }
 
     const { error } = await supabase

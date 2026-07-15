@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import type { NoteName } from '../theory/notes';
 import type { FretPosition, Instrument, InstrumentTuning } from '../theory/fretboard';
-import { DEFAULT_TUNING_KEY, TUNINGS_BY_INSTRUMENT, isStringInstrument } from '../theory/fretboard';
+import { DEFAULT_TUNING_KEY, TUNINGS_BY_INSTRUMENT, isStringInstrument, supportsExercises } from '../theory/fretboard';
 import { pathToState } from '../routing/url';
 import { hasCurriculum } from '../lessons/registry';
 
-export type AppView = 'freeplay' | 'exercises' | 'lessons' | 'library' | 'playback' | 'admin';
+export type AppView = 'freeplay' | 'exercises' | 'lessons' | 'library' | 'playback' | 'admin' | 'about';
 export type TuningKey = string;
 export type Theme = 'dark' | 'light';
 export type { Instrument };
@@ -55,7 +55,7 @@ const INSTRUMENT_KEY = 'uke-sensei-instrument';
 function getInitialInstrument(): Instrument {
   if (typeof window === 'undefined') return 'ukulele';
   const stored = localStorage.getItem(INSTRUMENT_KEY);
-  if (stored === 'ukulele' || stored === 'bass' || stored === 'guitar' || stored === 'clarinet') return stored;
+  if (stored === 'ukulele' || stored === 'bass' || stored === 'guitar' || stored === 'clarinet' || stored === 'voice') return stored;
   return 'ukulele';
 }
 
@@ -193,8 +193,8 @@ export const useAppStore = create<AppState>((set) => ({
       const tuning = isStringInstrument(instrument)
         ? TUNINGS_BY_INSTRUMENT[instrument][tuningKey]
         : state.tuning;
-      // Fretboard-based views/exercises don't apply to clarinet.
-      const view = !isStringInstrument(instrument) && (state.view === 'lessons' || state.view === 'exercises')
+      // Exercises/lessons don't apply when the instrument doesn't support them.
+      const view = !supportsExercises(instrument) && state.view === 'exercises'
         ? 'freeplay'
         : !hasCurriculum(instrument) && state.view === 'lessons'
           ? 'freeplay'

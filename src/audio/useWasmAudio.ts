@@ -309,6 +309,15 @@ export function useWasmAudio() {
     return () => { stop(); };
   }, [stop]);
 
+  // Stable identities (read from stateRef, no reactive deps) so consumers like
+  // FftVisualizer can keep a persistent animation loop running without it
+  // restarting on every pitch-detection re-render of the caller.
+  const getAnalyser = useCallback(() => stateRef.current.analyser, []);
+  const getSampleRate = useCallback(() => stateRef.current.audioContext?.sampleRate ?? 44100, []);
+  // The EQ'd destination stream, so recordings reflect the shaped tone.
+  // Falls back to the raw mic stream if the destination isn't ready yet.
+  const getStream = useCallback(() => stateRef.current.destination?.stream ?? stateRef.current.stream, []);
+
   return {
     isActive,
     error,
@@ -320,10 +329,8 @@ export function useWasmAudio() {
     start,
     stop,
     wasmReady,
-    getAnalyser: () => stateRef.current.analyser,
-    getSampleRate: () => stateRef.current.audioContext?.sampleRate ?? 44100,
-    // The EQ'd destination stream, so recordings reflect the shaped tone.
-    // Falls back to the raw mic stream if the destination isn't ready yet.
-    getStream: () => stateRef.current.destination?.stream ?? stateRef.current.stream,
+    getAnalyser,
+    getSampleRate,
+    getStream,
   };
 }

@@ -49,6 +49,10 @@ export const AUDIO_CONFIG_BY_INSTRUMENT: Record<
   // Chalumeau E3 (~165 Hz) to clarion C6 (~1047 Hz), the range covered by
   // the fingering chart in clarinetFingerings.ts.
   clarinet: { minFrequency: 145, maxFrequency: 1100, analysisSize: 2048 },
+  // C3 (~131 Hz) to C5 (~523 Hz), the practice range covered by
+  // voiceRange.ts. A larger analysis window helps resolve the lower notes,
+  // similar to bass/guitar.
+  voice: { minFrequency: 110, maxFrequency: 600, analysisSize: 4096 },
 };
 
 const MIN_CLARITY = 0.85;

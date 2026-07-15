@@ -1,4 +1,4 @@
-import { BASS_TUNINGS } from '../theory/fretboard';
+import { BASS_TUNINGS, generateFretboard } from '../theory/fretboard';
 import type { Lesson, LessonModule } from './types';
 import { createCurriculum } from './curriculum';
 
@@ -404,7 +404,7 @@ export const bassTechniqueCurriculum = createCurriculum({
   id: 'bass-percussive-techniques',
   title: 'Percussive Bass Techniques',
   description: 'Thumb attacks, two-handed taps, and ringing harmonics -- the technique vocabulary behind percussive solo bass playing.',
-  referenceTuning: BASS_TUNINGS.bass_standard,
+  referenceBoard: generateFretboard(BASS_TUNINGS.bass_standard),
   modules: MODULES,
   lessons: LESSONS,
 });

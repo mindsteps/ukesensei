@@ -19,6 +19,8 @@ export function stateToPath(view: AppView, lessonId: string | null, sessionId: s
       return sessionId ? `/library/${sessionId}` : '/library';
     case 'admin':
       return '/admin';
+    case 'about':
+      return '/about';
     case 'freeplay':
     default:
       return '/';
@@ -44,6 +46,8 @@ export function pathToState(pathname: string): RouteState {
         : { view: 'library', lessonId: null, sessionId: null };
     case 'admin':
       return { view: 'admin', lessonId: null, sessionId: null };
+    case 'about':
+      return { view: 'about', lessonId: null, sessionId: null };
     case 'freeplay':
       return { view: 'freeplay', lessonId: null, sessionId: null };
     default:

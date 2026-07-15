@@ -1,9 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { createScaleExercise } from './scaleExercises';
+import { createScaleExerciseFromBoard } from './scaleExercises';
 import type { ExerciseDirection } from './types';
 import type { NoteName } from '../theory/notes';
-import type { FretPosition } from '../theory/fretboard';
+import { generateFretboard, type FretPosition } from '../theory/fretboard';
+import { getVoiceRangeBoard } from '../theory/voiceRange';
 
 export interface CustomExerciseOptions {
   positions: FretPosition[];
@@ -29,6 +30,7 @@ export function useExercise(opts: UseExerciseOptions = {}) {
   const startExercise = useAppStore((s) => s.startExercise);
   const setView = useAppStore((s) => s.setView);
   const tuning = useAppStore((s) => s.tuning);
+  const instrument = useAppStore((s) => s.instrument);
 
   const holdStartRef = useRef<number | null>(null);
   const lastNoteRef = useRef<string | null>(null);
@@ -37,7 +39,8 @@ export function useExercise(opts: UseExerciseOptions = {}) {
 
   const begin = useCallback(
     (root: NoteName, scaleKey: string, direction: ExerciseDirection = 'ascending', bpm: number | null = null, loops: number = 1) => {
-      const config = createScaleExercise(root, scaleKey, tuning, direction);
+      const board = instrument === 'voice' ? getVoiceRangeBoard() : generateFretboard(tuning);
+      const config = createScaleExerciseFromBoard(root, scaleKey, board, direction);
       // Repeat the scale path for the requested number of loops
       let positions = config.positions;
       if (loops > 1) {
@@ -64,7 +67,7 @@ export function useExercise(opts: UseExerciseOptions = {}) {
       });
       setView('freeplay');
     },
-    [startExercise, setView, tuning],
+    [startExercise, setView, tuning, instrument],
   );
 
   const beginCustom = useCallback(

@@ -1,14 +1,9 @@
 import type { NoteName } from '../theory/notes';
 import { getScaleNotes } from '../theory/scales';
-import {
-  generateFretboard,
-  getScalePositions,
-  type FretPosition,
-  type InstrumentTuning,
-} from '../theory/fretboard';
+import { getScalePositions, type FretPosition } from '../theory/fretboard';
 import type { ExerciseDirection, ScaleExerciseConfig } from './types';
 
-function buildScalePath(
+export function buildScalePath(
   fretboard: FretPosition[],
   scaleNotes: NoteName[],
   direction: ExerciseDirection,
@@ -58,15 +53,19 @@ function buildScalePath(
   return [...ascending, ...descending];
 }
 
-export function createScaleExercise(
+/**
+ * Build a scale exercise from an arbitrary pitch-target board: a real
+ * fretboard (`generateFretboard(tuning)`) for string instruments, or e.g.
+ * voice's range board (`getVoiceRangeBoard()`) for non-fretted instruments.
+ */
+export function createScaleExerciseFromBoard(
   root: NoteName,
   scaleKey: string,
-  tuning: InstrumentTuning,
+  board: FretPosition[],
   direction: ExerciseDirection = 'ascending',
 ): ScaleExerciseConfig {
-  const fretboard = generateFretboard(tuning);
   const scaleNotes = getScaleNotes(root, scaleKey);
-  const positions = buildScalePath(fretboard, scaleNotes, direction);
+  const positions = buildScalePath(board, scaleNotes, direction);
 
   return { root, scaleKey, direction, positions };
 }

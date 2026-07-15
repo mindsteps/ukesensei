@@ -1,14 +1,16 @@
-import type { FretPosition, InstrumentTuning } from '../theory/fretboard';
-import { generateFretboard } from '../theory/fretboard';
+import type { FretPosition } from '../theory/fretboard';
 import type { Lesson, LessonModule } from './types';
 
 /**
  * A fully-resolved lesson curriculum for one instrument. Position tuples in a
  * curriculum's lessons are `[string, fret]` pairs relative to that curriculum's
- * own `referenceTuning` -- NOT necessarily the tuning the player currently has
+ * own `referenceBoard` -- NOT necessarily the tuning the player currently has
  * selected in the app (e.g. the ukulele curriculum is always resolved against
  * Low-G, even if the player is in Standard tuning; note names are identical
- * across tunings for a given string/fret, only the octave differs).
+ * across tunings for a given string/fret, only the octave differs). For
+ * instruments with no real fretboard (e.g. voice), the reference board can be
+ * any FretPosition[] that defines the pitch targets `[string, fret]` map to --
+ * see voiceRange.ts's getVoiceRangeBoard().
  */
 export interface Curriculum {
   id: string;
@@ -28,15 +30,14 @@ export interface CreateCurriculumOptions {
   id: string;
   title: string;
   description: string;
-  /** The tuning that this curriculum's `[string, fret]` position tuples are written against. */
-  referenceTuning: InstrumentTuning;
+  /** The board that this curriculum's `[string, fret]` position tuples are resolved against. */
+  referenceBoard: FretPosition[];
   modules: LessonModule[];
   lessons: Lesson[];
 }
 
 export function createCurriculum(opts: CreateCurriculumOptions): Curriculum {
-  const { id, title, description, referenceTuning, modules, lessons } = opts;
-  const referenceBoard = generateFretboard(referenceTuning);
+  const { id, title, description, referenceBoard, modules, lessons } = opts;
 
   function resolvePositions(tuples: [number, number][]): FretPosition[] {
     return tuples.map(([string, fret]) => {
