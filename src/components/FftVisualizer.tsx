@@ -69,6 +69,7 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
 
     const style = getComputedStyle(canvas);
     const accentColor = style.getPropertyValue('--c-accent').trim() || '#14b8a6';
+    const secondaryColor = style.getPropertyValue('--color-accent-yellow').trim() || '#fbbf24';
     const mutedColor = style.getPropertyValue('--c-text-muted').trim() || '#666';
     const borderColor = style.getPropertyValue('--c-border').trim() || '#333';
 
@@ -113,22 +114,41 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
       }
     }
 
-    // Peak frequency indicator
-    let peakBin = 0;
-    let peakVal = 0;
-    const minBin = Math.floor(minFreq / binHz);
-    const maxBin = Math.min(Math.ceil(maxFreq / binHz), bufLen - 1);
+    // Peak frequency indicators — the loudest peak, plus a second, distinct
+    // peak (e.g. a second note in a chord/interval) if one stands out.
+    const minBin = Math.max(1, Math.floor(minFreq / binHz));
+    const maxBin = Math.min(Math.ceil(maxFreq / binHz), bufLen - 2);
+    const isLocalPeak = (i: number) => data[i] >= data[i - 1] && data[i] >= data[i + 1];
+
+    let peak1Bin = -1;
+    let peak1Val = 0;
     for (let i = minBin; i <= maxBin; i++) {
-      if (data[i] > peakVal) {
-        peakVal = data[i];
-        peakBin = i;
+      if (data[i] > peak1Val && isLocalPeak(i)) {
+        peak1Val = data[i];
+        peak1Bin = i;
       }
     }
 
-    if (peakVal > 18) {
-      const peakFreq = peakBin * binHz;
-      const px = freqToX(peakFreq);
-      ctx.strokeStyle = accentColor;
+    let peak2Bin = -1;
+    let peak2Val = 0;
+    if (peak1Bin >= 0) {
+      const peak1Freq = peak1Bin * binHz;
+      // Exclude bins close to the primary peak (~ a semitone) so we don't
+      // just pick a point on the same peak's skirt.
+      const exclusionHz = peak1Freq * 0.06;
+      for (let i = minBin; i <= maxBin; i++) {
+        if (Math.abs(i * binHz - peak1Freq) < exclusionHz) continue;
+        if (data[i] > peak2Val && isLocalPeak(i)) {
+          peak2Val = data[i];
+          peak2Bin = i;
+        }
+      }
+    }
+
+    const drawPeak = (bin: number, color: string, labelBelow: boolean) => {
+      const freq = bin * binHz;
+      const px = freqToX(freq);
+      ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
@@ -137,10 +157,17 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = accentColor;
+      ctx.fillStyle = color;
       ctx.font = 'bold 10px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`${Math.round(peakFreq)} Hz`, px, 10);
+      ctx.fillText(`${Math.round(freq)} Hz`, px, labelBelow ? 22 : 10);
+    };
+
+    if (peak1Val > 18) drawPeak(peak1Bin, accentColor, false);
+    // Only surface the second peak if it's a real, sizeable feature — not
+    // noise trailing off the primary peak.
+    if (peak2Bin >= 0 && peak2Val > 18 && peak2Val > peak1Val * 0.35) {
+      drawPeak(peak2Bin, secondaryColor, true);
     }
 
     rafRef.current = requestAnimationFrame(draw);
