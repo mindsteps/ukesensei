@@ -20,7 +20,7 @@ import { findTuningByKey, instrumentFromTuningKey } from '../theory/fretboard';
 import { isCloudSessionId } from '../storage/cloudSessionStore';
 import { useAuth } from '../auth/AuthProvider';
 import { useAudioClock } from '../audio/useAudioClock';
-import { useInstrumentSynth } from '../audio/useInstrumentSynth';
+import { useInstrumentSynth, isPitchedSynth } from '../audio/useInstrumentSynth';
 
 interface SessionPlaybackProps {
   sessionId: string;
@@ -139,7 +139,7 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
   const handleNoteClick = useCallback((index: number) => {
     setSelectedNoteIndex(index);
     const note = melodyNotes[index];
-    if (note) synth.playNote(note.note, note.octave);
+    if (note && isPitchedSynth(synth)) synth.playNote(note.note, note.octave);
   }, [melodyNotes, synth]);
 
   if (loading) {

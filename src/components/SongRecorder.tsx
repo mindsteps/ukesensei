@@ -5,7 +5,7 @@ import { findTuningByKey, isStringInstrument } from '../theory/fretboard';
 import { inferSongChords } from '../theory/harmony';
 import { useAudioRecorder } from '../audio/useAudioRecorder';
 import { useAudioClock } from '../audio/useAudioClock';
-import { useInstrumentSynth } from '../audio/useInstrumentSynth';
+import { useInstrumentSynth, isPitchedSynth } from '../audio/useInstrumentSynth';
 import { transcribeAudioBlob } from '../audio/transcribeAudio';
 import { SheetMusicView } from './SheetMusicView';
 import { Fretboard } from './Fretboard/Fretboard';
@@ -152,7 +152,7 @@ export function SongRecorder({
   const handleNoteClick = useCallback((index: number) => {
     setSelectedNoteIndex(index);
     const note = (finishedNotes ?? [])[index];
-    if (note) synth.playNote(note.note, note.octave);
+    if (note && isPitchedSynth(synth)) synth.playNote(note.note, note.octave);
   }, [finishedNotes, synth]);
 
   // Computed once here (rather than left for SheetMusicScore to infer on its
