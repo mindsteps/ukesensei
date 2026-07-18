@@ -1,5 +1,5 @@
 import { type NoteName, noteToSemitone, semitoneToNote } from './notes';
-import type { FretPosition } from './fretboard';
+import type { FretPosition, InstrumentTuning } from './fretboard';
 
 /**
  * Cello is a fretless instrument with four open strings tuned A-D-G-C
@@ -34,6 +34,20 @@ export const CELLO_STRINGS: CelloString[] = [
   { name: 'G', openNote: 'G', openOctave: 2 },
   { name: 'C', openNote: 'C', openOctave: 2 },
 ];
+
+/**
+ * Cello has no alternate tunings (unlike ukulele/bass/guitar), but it's
+ * still drawn using the same fretboard visualization as those instruments --
+ * this lets the app reuse the generic <Fretboard> component and its
+ * scale/exercise-target highlighting instead of building a bespoke diagram.
+ * "Frets" here just mean semitone offsets from the open string, same as
+ * getCelloPitchBoard(); the curriculum never needs more than a handful of
+ * semitones per string, well within the standard NUM_FRETS range.
+ */
+export const CELLO_TUNING: InstrumentTuning = {
+  name: 'Standard (A-D-G-C)',
+  strings: CELLO_STRINGS.map((s) => ({ note: s.openNote, octave: s.openOctave })),
+};
 
 /**
  * The range of semitones that can be played on a single string, relative to

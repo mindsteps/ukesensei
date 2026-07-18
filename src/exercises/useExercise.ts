@@ -7,6 +7,7 @@ import { generateFretboard, type FretPosition } from '../theory/fretboard';
 import { getVoiceRangeBoard } from '../theory/voiceRange';
 import { getHandpanBoard } from '../theory/handpanLayout';
 import { getHarmonicaBoard } from '../theory/harmonicaLayout';
+import { getCelloPitchBoard } from '../theory/celloPitches';
 
 export interface CustomExerciseOptions {
   positions: FretPosition[];
@@ -45,6 +46,7 @@ export function useExercise(opts: UseExerciseOptions = {}) {
       const board = instrument === 'voice' ? getVoiceRangeBoard()
         : instrument === 'handpan' ? getHandpanBoard(handpanLayoutKey)
         : instrument === 'harmonica' ? getHarmonicaBoard()
+        : instrument === 'cello' ? getCelloPitchBoard()
         : generateFretboard(tuning);
       const config = createScaleExerciseFromBoard(root, scaleKey, board, direction);
       // Repeat the scale path for the requested number of loops

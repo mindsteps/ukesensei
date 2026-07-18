@@ -61,7 +61,7 @@ export function About() {
 
         <Section title="Instruments">
           <p>
-            Supports ukulele, bass, and guitar with an interactive fretboard, clarinet with a
+            Supports ukulele, bass, guitar, and cello with an interactive fretboard, clarinet with a
             dedicated fingering chart, voice with pitch-matching exercises and lessons of its own,
             and handpan with its own tone-field diagram and pitch-matching lessons. Tunings can be
             selected manually or auto-detected as you play.

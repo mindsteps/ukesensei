@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { NoteName } from '../theory/notes';
 import type { FretPosition, Instrument, InstrumentTuning } from '../theory/fretboard';
 import { DEFAULT_TUNING_KEY, TUNINGS_BY_INSTRUMENT, isStringInstrument, supportsExercises } from '../theory/fretboard';
+import { CELLO_TUNING } from '../theory/celloPitches';
 import { DEFAULT_HANDPAN_LAYOUT_KEY, isHandpanLayoutKey, type HandpanLayoutKey } from '../theory/handpanLayout';
 import { pathToState } from '../routing/url';
 import { hasCurriculum } from '../lessons/registry';
@@ -89,7 +90,7 @@ function getInitialInstrument(): Instrument {
   if (typeof window === 'undefined') return 'ukulele';
   const stored = localStorage.getItem(INSTRUMENT_KEY);
   if (
-    stored === 'ukulele' || stored === 'bass' || stored === 'guitar' || stored === 'clarinet' ||
+    stored === 'ukulele' || stored === 'bass' || stored === 'guitar' || stored === 'cello' || stored === 'clarinet' ||
     stored === 'voice' || stored === 'handpan' || stored === 'cajon' || stored === 'harmonica'
   ) return stored;
   return 'ukulele';
@@ -247,9 +248,19 @@ function persistLessonProgress(ids: string[]) {
 const initialTheme = getInitialTheme();
 applyThemeClass(initialTheme);
 
+/**
+ * Cello has no alternate tunings of its own (unlike ukulele/bass/guitar) but
+ * still needs an InstrumentTuning to draw on the shared <Fretboard>; other
+ * non-string instruments (clarinet, voice, ...) have no fretboard at all, so
+ * they fall back to a harmless placeholder tuning that's simply never used.
+ */
+function tuningForInstrument(instrument: Instrument, tuningKey: TuningKey, fallback: InstrumentTuning): InstrumentTuning {
+  if (isStringInstrument(instrument)) return TUNINGS_BY_INSTRUMENT[instrument][tuningKey];
+  if (instrument === 'cello') return CELLO_TUNING;
+  return fallback;
+}
+
 const initialInstrument = getInitialInstrument();
-// Clarinet has no tuning concept; fall back to a harmless placeholder tuning
-// (unused by anything clarinet-related) so `tuning` always has a value.
 const initialTuningKey = isStringInstrument(initialInstrument)
   ? DEFAULT_TUNING_KEY[initialInstrument]
   : DEFAULT_TUNING_KEY.ukulele;
@@ -281,9 +292,7 @@ export const useAppStore = create<AppState>((set) => ({
       localStorage.setItem(INSTRUMENT_KEY, instrument);
       // Clarinet has no tuning/fretboard, so leave tuning untouched (it's unused).
       const tuningKey = isStringInstrument(instrument) ? DEFAULT_TUNING_KEY[instrument] : state.tuningKey;
-      const tuning = isStringInstrument(instrument)
-        ? TUNINGS_BY_INSTRUMENT[instrument][tuningKey]
-        : state.tuning;
+      const tuning = tuningForInstrument(instrument, tuningKey, state.tuning);
       // Exercises/lessons don't apply when the instrument doesn't support them.
       const view = !supportsExercises(instrument) && state.view === 'exercises'
         ? 'freeplay'
@@ -302,9 +311,7 @@ export const useAppStore = create<AppState>((set) => ({
     }),
 
   tuningKey: initialTuningKey,
-  tuning: isStringInstrument(initialInstrument)
-    ? TUNINGS_BY_INSTRUMENT[initialInstrument][initialTuningKey]
-    : TUNINGS_BY_INSTRUMENT.ukulele[initialTuningKey],
+  tuning: tuningForInstrument(initialInstrument, initialTuningKey, TUNINGS_BY_INSTRUMENT.ukulele[initialTuningKey]),
   setTuning: (key) =>
     set((state) => ({
       tuningKey: key,

@@ -64,6 +64,7 @@ export function Layout({
                 <option value="ukulele">Uke</option>
                 <option value="bass">Bass</option>
                 <option value="guitar">Guitar</option>
+                <option value="cello">Cello</option>
                 <option value="clarinet">Clarinet</option>
                 <option value="harmonica">Harmonica</option>
                 <option value="voice">Voice</option>
