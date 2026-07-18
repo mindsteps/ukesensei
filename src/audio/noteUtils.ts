@@ -64,6 +64,9 @@ export const AUDIO_CONFIG_BY_INSTRUMENT: Record<
   // Hole 1 blow (C4, ~262 Hz) up to hole 10 blow (C7, ~2093 Hz), the full
   // range covered by harmonicaLayout.ts's 10-hole Richter chart.
   harmonica: { minFrequency: 240, maxFrequency: 2200, analysisSize: 2048 },
+  // Cello open C string is C2 (~65 Hz); with a wide range up to A5 (~880 Hz).
+  // Use a large analysis window (4096) to resolve the deep, resonant low notes.
+  cello: { minFrequency: 55, maxFrequency: 1000, analysisSize: 4096 },
 };
 
 const MIN_CLARITY = 0.85;

@@ -16,7 +16,7 @@ import { createCurriculum } from './curriculum';
  * - semitone_offset: how many semitones above the open string pitch
  *
  * For example: [0, 0] = open A, [0, 2] = B (two semitones above A),
- * [0, 4] = C♯, [1, 0] = open D, etc.
+ * [0, 4] = C#, [1, 0] = open D, etc.
  */
 
 const celloPitchBoard = getCelloPitchBoard();
@@ -61,15 +61,15 @@ export const LESSONS: Lesson[] = [
     content: [
       {
         type: 'paragraph',
-        text: 'The cello rests between your knees with its neck angling slightly away from your body. Sit upright with your feet flat on the floor — your back should be straight but not rigid. Let gravity do the work; tension in your neck or shoulders will limit your range and tire you quickly.',
+        text: 'The cello rests between your knees with its neck angling slightly away from your body. Sit upright with your feet flat on the floor. Your back should be straight but not rigid. Let gravity do the work; tension in your neck or shoulders will limit your range and tire you quickly.',
       },
       {
         type: 'paragraph',
-        text: 'The cello's C-peg (bottom tuning peg, nearest you) should be at a comfortable height near your left shoulder. Adjust the endpin length so the cello sits at a slight angle and the fingerboard is accessible without hunching.',
+        text: 'The C-peg (bottom tuning peg, nearest you) should be at a comfortable height near your left shoulder. Adjust the endpin length so the cello sits at a slight angle and the fingerboard is accessible without hunching.',
       },
       {
         type: 'tip',
-        text: 'A good check: you should be able to drop your bow arm to your side without it hitting the cello. If it does, your cello is too far out.',
+        text: 'Good check: you should be able to drop your bow arm to your side without it hitting the cello. If it does, your cello is too far out.',
       },
     ],
     practice: [],
@@ -93,7 +93,7 @@ export const LESSONS: Lesson[] = [
     content: [
       {
         type: 'paragraph',
-        text: 'Hold the bow stick gently with all five fingers. Your thumb goes under the frog (the wooden part), slightly curved. Your index and middle fingers rest on top of the stick, while your ring and pinky fingers round over it. The bow should feel like a natural extension of your arm, not a rigid club.',
+        text: 'Hold the bow stick gently with all five fingers. Your thumb goes under the frog (the wooden part), slightly curved. Your index and middle fingers rest on top of the stick, while your ring and pinky fingers round over it. The bow should feel like a natural extension of your arm.',
       },
       {
         type: 'paragraph',
@@ -101,7 +101,7 @@ export const LESSONS: Lesson[] = [
       },
       {
         type: 'tip',
-        text: 'Common mistake: gripping the bow too hard. Let gravity and the weight of your arm do the work. Think "hold, don\'t squeeze."',
+        text: 'Common mistake: gripping the bow too hard. Let gravity and the weight of your arm do the work. Think "hold, do not squeeze."',
       },
     ],
     practice: [],
@@ -125,7 +125,7 @@ export const LESSONS: Lesson[] = [
     content: [
       {
         type: 'paragraph',
-        text: 'The cello has four open strings: A (thinnest, brightest), D (warm), G (rich), and C (deepest, fullest). Each one has a different character. Draw your bow slowly across each string, using the middle third of the bow. Keep steady pressure — not too light (scratchy), not too heavy (strained).',
+        text: 'The cello has four open strings: A (thinnest, brightest), D (warm), G (rich), and C (deepest, fullest). Each one has a different character. Draw your bow slowly across each string, using the middle third of the bow. Keep steady pressure not too light (scratchy), not too heavy (strained).',
       },
       {
         type: 'paragraph',
@@ -133,7 +133,7 @@ export const LESSONS: Lesson[] = [
       },
       {
         type: 'tip',
-        text: 'Start slowly. The cello resonates best when you give it time and consistent pressure. Rushing or squeezing will fight against the instrument\'s natural tone.',
+        text: 'Start slowly. The cello resonates best when you give it time and consistent pressure. Rushing or squeezing will fight against the instruments natural tone.',
       },
     ],
     practice: [
@@ -196,15 +196,15 @@ export const LESSONS: Lesson[] = [
     content: [
       {
         type: 'paragraph',
-        text: 'On cello, you find pitches by ear and through careful finger placement. Start on the A string (the thinnest one). Place your index finger roughly 3–4 centimeters from the nut (the ridge at the top of the fingerboard) and listen — you\'re looking for B (one whole step above A).',
+        text: 'On cello, you find pitches by ear and through careful finger placement. Start on the A string (the thinnest one). Place your index finger roughly 3-4 centimeters from the nut (the ridge at the top of the fingerboard) and listen for B (one whole step above A).',
       },
       {
         type: 'paragraph',
-        text: 'Use your ear and a reference pitch to guide you. The most important skill in fretless playing is learning to hear the target pitch and then place your finger exactly where it needs to be. This takes time and patient listening, not rushing.',
+        text: 'Use your ear and a reference pitch to guide you. The most important skill in fretless playing is learning to hear the target pitch and then place your finger exactly where it needs to be. This takes time and patient listening.',
       },
       {
         type: 'tip',
-        text: 'Don\'t press down hard — use just enough pressure to stop the string cleanly. Beginners often press too hard, which causes tension and fatigue. Listen for buzzes or scratches; they often mean you\'re pressing unevenly.',
+        text: 'Do not press down hard. Use just enough pressure to stop the string cleanly. Beginners often press too hard, which causes tension and fatigue. Listen for buzzes or scratches; they often mean you are pressing unevenly.',
       },
     ],
     practice: [
@@ -220,7 +220,7 @@ export const LESSONS: Lesson[] = [
       {
         id: 'c4-p2',
         title: 'A string open notes',
-        instructions: 'Play a sequence of pitches on the A string: A (open), B, C♯, D.',
+        instructions: 'Play a sequence of pitches on the A string: A (open), B, C#, D.',
         root: 'A',
         scaleKey: 'ionian',
         positions: [[0, 0], [0, 2], [0, 4], [0, 5]],
@@ -228,7 +228,7 @@ export const LESSONS: Lesson[] = [
       },
     ],
     checkpoint: {
-      title: 'A string simple scale: A, B, C♯, D',
+      title: 'A string simple scale: A, B, C#, D',
       instructions: 'Play these four pitches in sequence on the A string. Focus on clean intonation.',
       root: 'A',
       scaleKey: 'ionian',
@@ -243,7 +243,7 @@ export const LESSONS: Lesson[] = [
     moduleId: 'first-steps',
     title: 'Pitches on the D String',
     category: 'technique',
-    summary: 'Play D, E, F♯, and G on the D string.',
+    summary: 'Play D, E, F#, and G on the D string.',
     content: [
       {
         type: 'paragraph',
@@ -253,8 +253,8 @@ export const LESSONS: Lesson[] = [
     practice: [
       {
         id: 'c5-p1',
-        title: 'D string notes: D, E, F♯, G',
-        instructions: 'Play the D string open, then place fingers for E, F♯, and G.',
+        title: 'D string notes: D, E, F#, G',
+        instructions: 'Play the D string open, then place fingers for E, F#, and G.',
         root: 'D',
         scaleKey: 'ionian',
         positions: [[1, 0], [1, 2], [1, 4], [1, 5]],
@@ -262,7 +262,7 @@ export const LESSONS: Lesson[] = [
       },
     ],
     checkpoint: {
-      title: 'D string scale: D, E, F♯, G',
+      title: 'D string scale: D, E, F#, G',
       instructions: 'Play these pitches cleanly on the D string.',
       root: 'D',
       scaleKey: 'ionian',
@@ -288,7 +288,7 @@ export const LESSONS: Lesson[] = [
       {
         id: 'c6-p1',
         title: 'G string notes: G, A, B, C',
-        instructions: 'Play the G string open, then E, F♯, and G.',
+        instructions: 'Play the G string open, then E, F#, and G.',
         root: 'G',
         scaleKey: 'ionian',
         positions: [[2, 0], [2, 2], [2, 4], [2, 5]],
@@ -438,7 +438,7 @@ export const LESSONS: Lesson[] = [
     content: [
       {
         type: 'paragraph',
-        text: 'A major scale is the foundation of Western music. Playing it on cello teaches your fingers the interval relationships and trains your ear. You\'ll play A, B, C♯, D, E, F♯, and G♯ — mostly on the A and D strings, with the highest note on the D string.',
+        text: 'A major scale is the foundation of Western music. Playing it on cello teaches your fingers the interval relationships and trains your ear. You will play A, B, C#, D, E, F#, and G# mostly on the A and D strings, with the highest note on the D string.',
       },
     ],
     practice: [
@@ -533,7 +533,7 @@ export const LESSONS: Lesson[] = [
       {
         id: 'c12-p1',
         title: 'Mary opening phrase',
-        instructions: 'Play the opening of the melody: E, D, C♯, D, E, E, E.',
+        instructions: 'Play the opening of the melody: E, D, C#, D, E, E, E.',
         root: 'E',
         scaleKey: 'ionian',
         positions: [[1, 2], [1, 0], [0, 4], [1, 0], [1, 2], [1, 2], [1, 2]],
