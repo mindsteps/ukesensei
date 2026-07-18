@@ -17,6 +17,8 @@ export function stateToPath(view: AppView, lessonId: string | null, sessionId: s
       return '/library';
     case 'playback':
       return sessionId ? `/library/${sessionId}` : '/library';
+    case 'stems':
+      return '/stems';
     case 'admin':
       return '/admin';
     case 'about':
@@ -46,6 +48,8 @@ export function pathToState(pathname: string): RouteState {
       return second
         ? { view: 'playback', lessonId: null, sessionId: second }
         : { view: 'library', lessonId: null, sessionId: null };
+    case 'stems':
+      return { view: 'stems', lessonId: null, sessionId: null };
     case 'admin':
       return { view: 'admin', lessonId: null, sessionId: null };
     case 'about':

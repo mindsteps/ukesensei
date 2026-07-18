@@ -3,7 +3,9 @@ import { randomUUID } from 'crypto';
 import { getUserIdFromRequest } from '../_lib/auth.js';
 import { createUploadUrl, spacesConfigured } from '../_lib/spaces.js';
 
-const ALLOWED_EXTENSIONS = new Set(['webm', 'wav', 'ogg', 'mp4', 'm4a']);
+// mp3/flac are for stem-analysis source tracks (api/stems/separate.py);
+// recordings themselves are webm/ogg/mp4 from MediaRecorder.
+const ALLOWED_EXTENSIONS = new Set(['webm', 'wav', 'ogg', 'mp4', 'm4a', 'mp3', 'flac']);
 const DEFAULT_EXTENSION = 'webm';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

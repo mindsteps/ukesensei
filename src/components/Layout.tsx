@@ -166,6 +166,12 @@ export function Layout({
             >
               Library
             </TabButton>
+            <TabButton
+              active={view === 'stems'}
+              onClick={() => onViewChange('stems')}
+            >
+              Stems
+            </TabButton>
             {showUser && profile?.is_admin && (
               <TabButton
                 active={view === 'admin'}

@@ -259,6 +259,30 @@ create policy "session_audio_select_shared" on storage.objects
     )
   );
 
+-- Stem analysis jobs (see api/stems/*). One row per uploaded track; the
+-- serverless separation function updates status/progress as it works and
+-- writes the resulting stem object keys (DigitalOcean Spaces) into `stems`.
+create table if not exists public.stem_jobs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles on delete cascade not null,
+  created_at timestamptz not null default now(),
+  status text not null default 'pending', -- pending | processing | complete | error
+  progress integer not null default 0,    -- 0-100
+  source_key text not null,               -- Spaces key of the uploaded track
+  track_name text not null default '',
+  duration_sec real,
+  stems jsonb,                             -- { "vocals": "<spaces key>", ... }
+  error text
+);
+
+create index if not exists stem_jobs_user_id_idx on public.stem_jobs (user_id);
+
+alter table public.stem_jobs enable row level security;
+
+drop policy if exists "stem_jobs_all_own" on public.stem_jobs;
+create policy "stem_jobs_all_own" on public.stem_jobs
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- Avatars are small, non-sensitive images shown throughout the UI, so the
 -- bucket is public (readable without a signed URL) — only writes are
 -- restricted to the owning user's own folder.

@@ -3,6 +3,11 @@
   "buildCommand": "yarn build",
   "installCommand": "yarn install",
   "outputDirectory": "dist",
+  "functions": {
+    "api/stems/separate.py": {
+      "maxDuration": 800
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

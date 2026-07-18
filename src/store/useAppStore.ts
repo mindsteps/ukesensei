@@ -8,7 +8,7 @@ import { pathToState } from '../routing/url';
 import { hasCurriculum } from '../lessons/registry';
 import type { CajonHitType, RhythmStep } from '../exercises/cajonPatterns';
 
-export type AppView = 'freeplay' | 'exercises' | 'lessons' | 'library' | 'playback' | 'admin' | 'about' | 'profile';
+export type AppView = 'freeplay' | 'exercises' | 'lessons' | 'library' | 'playback' | 'stems' | 'admin' | 'about' | 'profile';
 export type TuningKey = string;
 export type Theme = 'dark' | 'light';
 export type { Instrument };

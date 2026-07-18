@@ -44,3 +44,4 @@ Thumbs.db
 
 # Supabase CLI runtime cache
 supabase/.temp
+__pycache__/
