@@ -6,6 +6,9 @@ import {
   fetchAdminTopUsers,
   fetchAdminUsers,
   adminRevokeSharedLink,
+  adminDeleteUser,
+  adminResetPassword,
+  adminCleanUsers,
   type AdminOverview,
   type AdminRecentLogin,
   type AdminSharedLink,
@@ -27,6 +30,16 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleString();
 }
 
+/** A short, easy-to-read random password to pre-fill the reset-password prompt. */
+function generatePassword(): string {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let out = '';
+  for (let i = 0; i < 10; i++) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+}
+
 export function AdminDashboard() {
   const { refreshProfile } = useAuth();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -37,6 +50,9 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [userActionId, setUserActionId] = useState<string | null>(null);
+  const [userActionError, setUserActionError] = useState<string | null>(null);
+  const [cleaning, setCleaning] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,6 +98,60 @@ export function AdminDashboard() {
     }
   }, []);
 
+  const handleDeleteUser = useCallback(async (u: AdminUserRow) => {
+    const label = u.display_name ?? u.email ?? u.user_id.slice(0, 8);
+    if (!window.confirm(`Permanently delete ${label}? This removes their account, sessions, and progress. This cannot be undone.`)) return;
+    setUserActionError(null);
+    setUserActionId(u.user_id);
+    try {
+      await adminDeleteUser(u.user_id);
+      setUsers((prev) => prev.filter((row) => row.user_id !== u.user_id));
+    } catch (err) {
+      setUserActionError(getErrorMessage(err, 'Failed to delete user'));
+    } finally {
+      setUserActionId(null);
+    }
+  }, []);
+
+  const handleResetPassword = useCallback(async (u: AdminUserRow) => {
+    const label = u.display_name ?? u.email ?? u.user_id.slice(0, 8);
+    const suggested = generatePassword();
+    const newPassword = window.prompt(`New password for ${label} (min 6 characters):`, suggested);
+    if (!newPassword) return;
+    setUserActionError(null);
+    setUserActionId(u.user_id);
+    try {
+      await adminResetPassword(u.user_id, newPassword);
+      window.alert(`Password reset for ${label}.\n\nNew password: ${newPassword}\n\nThey've been signed out everywhere and will need this to sign in again.`);
+    } catch (err) {
+      setUserActionError(getErrorMessage(err, 'Failed to reset password'));
+    } finally {
+      setUserActionId(null);
+    }
+  }, []);
+
+  const handleCleanUsers = useCallback(async () => {
+    const raw = window.prompt('Delete abandoned (never-onboarded) accounts older than how many hours?', '24');
+    if (raw === null) return;
+    const maxAgeHours = Number(raw);
+    if (!Number.isFinite(maxAgeHours) || maxAgeHours < 0) {
+      window.alert('Please enter a non-negative number of hours.');
+      return;
+    }
+    if (!window.confirm(`Delete all non-admin accounts that never finished onboarding and are older than ${maxAgeHours}h? This cannot be undone.`)) return;
+    setCleaning(true);
+    setUserActionError(null);
+    try {
+      const deleted = await adminCleanUsers(maxAgeHours);
+      window.alert(deleted === 1 ? 'Deleted 1 abandoned account.' : `Deleted ${deleted} abandoned accounts.`);
+      await load();
+    } catch (err) {
+      setUserActionError(getErrorMessage(err, 'Failed to clean up users'));
+    } finally {
+      setCleaning(false);
+    }
+  }, [load]);
+
   if (loading) {
     return <div className="text-center py-12 text-[var(--c-text-muted)]">Loading admin reports…</div>;
   }
@@ -103,13 +173,28 @@ export function AdminDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-[var(--c-text-strong)]">Admin Dashboard</h2>
-        <button
-          onClick={load}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-muted)] hover:text-[var(--c-text)]"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCleanUsers}
+            disabled={cleaning}
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-red-400 hover:text-red-300 disabled:opacity-50"
+          >
+            {cleaning ? 'Cleaning…' : 'Clean up abandoned users'}
+          </button>
+          <button
+            onClick={load}
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--c-border)] text-[var(--c-text-muted)] hover:text-[var(--c-text)]"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {userActionError && (
+        <div className="text-xs text-red-400 bg-red-400/10 border border-red-400/30 rounded-lg px-3 py-2">
+          {userActionError}
+        </div>
+      )}
 
       {overview && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -258,6 +343,7 @@ export function AdminDashboard() {
                 <th className="px-3 py-2">Key</th>
                 <th className="px-3 py-2">Sessions</th>
                 <th className="px-3 py-2">Joined</th>
+                <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
@@ -271,6 +357,26 @@ export function AdminDashboard() {
                   <td className="px-3 py-2">{u.preferred_key}</td>
                   <td className="px-3 py-2">{u.session_count}</td>
                   <td className="px-3 py-2 text-[var(--c-text-muted)]">{formatDate(u.created_at)}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    {!u.is_admin && (
+                      <>
+                        <button
+                          onClick={() => handleResetPassword(u)}
+                          disabled={userActionId === u.user_id}
+                          className="text-teal-400 hover:underline disabled:opacity-50"
+                        >
+                          Reset password
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u)}
+                          disabled={userActionId === u.user_id}
+                          className="ml-3 text-red-400 hover:underline disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

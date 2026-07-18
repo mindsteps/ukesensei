@@ -273,3 +273,131 @@ $$;
 
 revoke all on function public.admin_revoke_shared_link(uuid) from public;
 grant execute on function public.admin_revoke_shared_link(uuid) to authenticated;
+
+-- Needed by admin_reset_user_password below to hash passwords the same way
+-- Supabase Auth does (bcrypt via crypt/gen_salt).
+create extension if not exists pgcrypto with schema extensions;
+
+-- Permanently deletes a user: the auth.users row (which cascades to
+-- profiles, and from there to lesson_progress/practice_sessions/shared_links)
+-- plus any Supabase Storage objects (avatar, session-audio recordings) —
+-- Postgres refuses to delete a user that still owns Storage objects, so
+-- those have to go first. Recordings kept in DigitalOcean Spaces instead of
+-- Supabase Storage (see api/recordings/*) are intentionally left behind;
+-- cleaning those up would mean this function reaching across to another
+-- service, which is out of scope here.
+create or replace function public.admin_delete_user(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, storage
+as $$
+declare
+  target_is_admin boolean;
+begin
+  if not public.is_admin_user() then
+    raise exception 'Not authorized';
+  end if;
+
+  if p_user_id = auth.uid() then
+    raise exception 'Cannot delete your own account';
+  end if;
+
+  select is_admin into target_is_admin from public.profiles where id = p_user_id;
+  if target_is_admin is null then
+    raise exception 'User not found';
+  end if;
+  if target_is_admin then
+    raise exception 'Cannot delete an admin account';
+  end if;
+
+  delete from storage.objects
+  where bucket_id in ('avatars', 'session-audio')
+    and (storage.foldername(name))[1] = p_user_id::text;
+
+  delete from auth.users where id = p_user_id;
+end;
+$$;
+
+revoke all on function public.admin_delete_user(uuid) from public;
+grant execute on function public.admin_delete_user(uuid) to authenticated;
+
+-- Sets a user's password directly (bypassing the normal "know your current
+-- password" flow), for an admin helping someone who's locked out. Also
+-- drops their existing sessions so the old password stops working
+-- everywhere immediately rather than just on next natural expiry.
+create or replace function public.admin_reset_user_password(p_user_id uuid, p_new_password text)
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, extensions
+as $$
+begin
+  if not public.is_admin_user() then
+    raise exception 'Not authorized';
+  end if;
+
+  if length(coalesce(p_new_password, '')) < 6 then
+    raise exception 'Password must be at least 6 characters';
+  end if;
+
+  if not exists (select 1 from auth.users where id = p_user_id) then
+    raise exception 'User not found';
+  end if;
+
+  update auth.users
+  set encrypted_password = crypt(p_new_password, gen_salt('bf')),
+      updated_at = now()
+  where id = p_user_id;
+
+  delete from auth.sessions where user_id = p_user_id;
+end;
+$$;
+
+revoke all on function public.admin_reset_user_password(uuid, text) from public;
+grant execute on function public.admin_reset_user_password(uuid, text) to authenticated;
+
+-- Bulk-deletes abandoned sign-ups: profiles that never finished onboarding
+-- (so they're not a "real" account anyone would recognize/miss) and are
+-- older than the given age. Since sign-in is anonymous, these accumulate
+-- from anyone who opened the app and never got past the name/password
+-- step — this is the "clean users" button on the admin dashboard. Admin
+-- accounts are never touched. Returns how many were deleted.
+create or replace function public.admin_clean_users(p_max_age_hours int default 24)
+returns int
+language plpgsql
+security definer
+set search_path = public, auth, storage
+as $$
+declare
+  deleted_count int;
+begin
+  if not public.is_admin_user() then
+    raise exception 'Not authorized';
+  end if;
+
+  with targets as (
+    select id from public.profiles
+    where not onboarding_complete
+      and not is_admin
+      and created_at < now() - make_interval(hours => greatest(0, p_max_age_hours))
+  ),
+  cleared_storage as (
+    delete from storage.objects
+    where bucket_id in ('avatars', 'session-audio')
+      and (storage.foldername(name))[1] in (select id::text from targets)
+    returning 1
+  ),
+  removed as (
+    delete from auth.users
+    where id in (select id from targets)
+    returning 1
+  )
+  select count(*) into deleted_count from removed;
+
+  return deleted_count;
+end;
+$$;
+
+revoke all on function public.admin_clean_users(int) from public;
+grant execute on function public.admin_clean_users(int) to authenticated;

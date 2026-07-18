@@ -115,3 +115,31 @@ export async function adminRevokeSharedLink(linkId: string): Promise<void> {
     body: JSON.stringify({ linkId }),
   });
 }
+
+/** Permanently deletes a user (auth account, profile, sessions, everything). Cannot target an admin or your own account. */
+export async function adminDeleteUser(userId: string): Promise<void> {
+  await callAdminApi<{ ok: true }>('delete-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+}
+
+/** Sets a user's password directly and signs them out everywhere. */
+export async function adminResetPassword(userId: string, newPassword: string): Promise<void> {
+  await callAdminApi<{ ok: true }>('reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, newPassword }),
+  });
+}
+
+/** Deletes abandoned (never-onboarded, non-admin) accounts older than maxAgeHours. Returns how many were removed. */
+export async function adminCleanUsers(maxAgeHours = 24): Promise<number> {
+  const { deleted } = await callAdminApi<{ deleted: number }>('clean-users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ maxAgeHours }),
+  });
+  return deleted;
+}
