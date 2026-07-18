@@ -6,9 +6,10 @@ export type StringInstrument = 'ukulele' | 'bass' | 'guitar';
 /** Clarinet has no strings/frets — it uses a fingering diagram instead (see clarinetFingerings.ts). */
 /** Voice has no strings/frets either — it uses a vocal practice range instead (see voiceRange.ts). */
 /** Handpan has no strings/frets either — it uses a fixed tone-field layout instead (see handpanLayout.ts). */
+/** Cello is fretless — it uses four open strings, with pitch determined by finger placement (see celloPitches.ts). */
 /** Cajon is percussive with no stable pitch — it uses hit-type/rhythm grading instead (see cajonPatterns.ts). */
 /** Harmonica has no strings/frets either — it uses a fixed hole blow/draw layout instead (see harmonicaLayout.ts). */
-export type Instrument = StringInstrument | 'clarinet' | 'voice' | 'handpan' | 'cajon' | 'harmonica';
+export type Instrument = StringInstrument | 'clarinet' | 'voice' | 'handpan' | 'cello' | 'cajon' | 'harmonica';
 
 export function isStringInstrument(instrument: Instrument): instrument is StringInstrument {
   return instrument === 'ukulele' || instrument === 'bass' || instrument === 'guitar';
