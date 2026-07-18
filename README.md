@@ -168,6 +168,12 @@ Strum any chord and the chord name and fretting diagram appear alongside the fre
 - **Server**: Express, better-sqlite3, multer
 - **Rendering**: Custom SVG for fretboard, chord, handpan, clarinet, and cajon diagrams
 
+## Documentation
+
+- [User Manual](docs/USER_MANUAL.md) — how to use the app as a player
+- [Developer Guide](docs/DEVELOPER_GUIDE.md) — architecture: audio pipeline, state, auth model, backends, deployment
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to get set up and submit changes
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

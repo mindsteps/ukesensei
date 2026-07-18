@@ -1,6 +1,6 @@
 # Contributing to Uke Sensei
 
-Thanks for your interest in contributing! Here's how to get started.
+Thanks for your interest in contributing! Here's how to get started. For an architecture overview before diving in, see the [Developer Guide](docs/DEVELOPER_GUIDE.md).
 
 ## Getting set up
 
