@@ -1,5 +1,6 @@
 import { AuthGate } from './auth/AuthGate';
 import App from './App';
+import { WelcomeTour } from './components/WelcomeTour';
 import { SharedSessionView } from './components/SharedSessionView';
 
 /** Matches `/s/<token>` — kept out of the normal router/store since shared
@@ -20,6 +21,7 @@ export default function AppRoot() {
   return (
     <AuthGate>
       <App />
+      <WelcomeTour />
     </AuthGate>
   );
 }

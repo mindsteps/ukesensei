@@ -83,6 +83,7 @@ export default function App() {
   const setHandpanLayoutKey = useAppStore((s) => s.setHandpanLayoutKey);
   const theme = useAppStore((s) => s.theme);
   const toggleTheme = useAppStore((s) => s.toggleTheme);
+  const openTour = useAppStore((s) => s.openTour);
   const fretboardInverted = useAppStore((s) => s.fretboardInverted);
   const setFretboardInverted = useAppStore((s) => s.setFretboardInverted);
   const audioLevel = useAppStore((s) => s.audioLevel);
@@ -645,7 +646,7 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
-        theme={theme} onToggleTheme={toggleTheme}
+        theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
         <SessionLibrary onSelectSession={handleSelectSession} />
@@ -659,7 +660,7 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
-        theme={theme} onToggleTheme={toggleTheme}
+        theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
         <SessionPlayback sessionId={selectedSessionId} onBack={handleBackToLibrary} />
@@ -673,7 +674,7 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
-        theme={theme} onToggleTheme={toggleTheme}
+        theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
         <About />
@@ -687,7 +688,7 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
-        theme={theme} onToggleTheme={toggleTheme}
+        theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
         <Profile />
@@ -702,7 +703,7 @@ export default function App() {
           tuningKey={tuningKey} onTuningChange={setTuning}
           tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
-        theme={theme} onToggleTheme={toggleTheme}
+        theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
           lessonsAvailable={!!curriculum}
           exercisesAvailable={instrument !== 'clarinet'}>
           <AdminSignIn />
@@ -714,7 +715,7 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
-        theme={theme} onToggleTheme={toggleTheme}
+        theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
         <AdminDashboard />
@@ -729,7 +730,7 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
-        theme={theme} onToggleTheme={toggleTheme}
+        theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
         {lesson ? (
@@ -766,7 +767,7 @@ export default function App() {
       handpanLayoutKey={handpanLayoutKey}
       onHandpanLayoutChange={setHandpanLayoutKey}
       theme={theme}
-      onToggleTheme={toggleTheme}
+      onToggleTheme={toggleTheme} onOpenTour={openTour}
       lessonsAvailable={!!curriculum}
       exercisesAvailable={instrument !== 'clarinet'}
     >

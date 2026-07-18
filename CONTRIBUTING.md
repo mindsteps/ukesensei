@@ -25,6 +25,28 @@ cd wasm
 ./build.sh
 ```
 
+## Environment variables
+
+See `.env.example` for the full list (Supabase, and optionally DigitalOcean Spaces for larger recordings). Without a `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` configured, the app still runs, just without auth, sync, or sharing.
+
+## Testing first-run flows locally
+
+Account onboarding and the welcome tour only show once per browser. To see them again during development, clear these `localStorage` keys and reload:
+
+- `uke-sensei-tour-complete` — re-triggers the welcome tour
+- Sign out (or clear Supabase's session storage) to re-trigger account onboarding
+
+## Where things live
+
+- `src/audio/` — microphone access, live pitch/onset/chord detection hooks
+- `wasm/` — the Rust FFT engine those hooks call into
+- `src/theory/` — notes, scales, chords, tunings, fretboard geometry
+- `src/lessons/` — per-instrument curricula (modules → lessons → checkpoints)
+- `src/exercises/` — free-play exercise/session logic (ungated, unlike lesson checkpoints)
+- `src/auth/` — sign-in, onboarding gating
+- `src/components/` — UI, including per-instrument panels (`ClarinetPanel`, `HandpanPanel`, `CajonPanel`, etc.) and the welcome tour (`WelcomeTour.tsx`)
+- `server/` — Express API for session recording/analysis
+
 ## Making changes
 
 1. Create a branch from `main` for your work

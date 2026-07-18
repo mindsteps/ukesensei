@@ -17,6 +17,7 @@ interface LayoutProps {
   onHandpanLayoutChange: (key: HandpanLayoutKey) => void;
   theme: Theme;
   onToggleTheme: () => void;
+  onOpenTour: () => void;
   /** Whether the current instrument has a lesson curriculum to show. */
   lessonsAvailable: boolean;
   /** Whether the current instrument supports the fretboard-based exercises view. */
@@ -36,6 +37,7 @@ export function Layout({
   onHandpanLayoutChange,
   theme,
   onToggleTheme,
+  onOpenTour,
   lessonsAvailable,
   exercisesAvailable,
   children,
@@ -107,6 +109,7 @@ export function Layout({
                   displayName={profile.display_name}
                   avatarUrl={profile.avatar_url}
                   onViewProfile={() => onViewChange('profile')}
+                  onOpenTour={onOpenTour}
                   onSignOut={signOut}
                 />
               )}
@@ -191,11 +194,13 @@ function UserMenu({
   displayName,
   avatarUrl,
   onViewProfile,
+  onOpenTour,
   onSignOut,
 }: {
   displayName: string;
   avatarUrl: string | null;
   onViewProfile: () => void;
+  onOpenTour: () => void;
   onSignOut: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -251,6 +256,13 @@ function UserMenu({
             className="w-full text-left px-3 py-1.5 text-xs text-[var(--c-text)] hover:bg-[var(--c-bg)] transition"
           >
             View profile
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => { setOpen(false); onOpenTour(); }}
+            className="w-full text-left px-3 py-1.5 text-xs text-[var(--c-text)] hover:bg-[var(--c-bg)] transition"
+          >
+            Take the tour
           </button>
           <button
             role="menuitem"

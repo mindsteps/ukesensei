@@ -56,6 +56,9 @@ After completing an exercise you get a summary with:
 ### Dark / light mode
 Toggle between dark and light themes. Your preference is saved in the browser.
 
+### Welcome tour
+New users get a short, skippable tour after finishing account setup, introducing the instrument switcher, Free Play, Exercises/Lessons, and the Library. It only shows once — skipping or finishing it marks it done. Anyone can bring it back anytime from the user menu (top right, next to your name) or the "Take the tour" link on the About page.
+
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) >= 20

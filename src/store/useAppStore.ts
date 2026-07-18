@@ -186,9 +186,31 @@ interface AppState {
   completedLessons: string[];
   completeLesson: (id: string) => void;
   resetLessonProgress: () => void;
+
+  // Welcome tour (first-run product tour)
+  tourComplete: boolean;
+  tourOpen: boolean;
+  openTour: () => void;
+  finishTour: () => void;
 }
 
 const LESSON_PROGRESS_KEY = 'uke-sensei-lessons';
+
+const TOUR_COMPLETE_KEY = 'uke-sensei-tour-complete';
+
+function getInitialTourComplete(): boolean {
+  if (typeof window === 'undefined') return true;
+  return localStorage.getItem(TOUR_COMPLETE_KEY) === '1';
+}
+
+function persistTourComplete() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(TOUR_COMPLETE_KEY, '1');
+  } catch {
+    /* storage may be unavailable */
+  }
+}
 
 function getInitialLessonProgress(): string[] {
   if (typeof window === 'undefined') return [];
@@ -227,6 +249,8 @@ const initialRoute =
   typeof window !== 'undefined'
     ? pathToState(window.location.pathname)
     : { view: 'freeplay' as AppView, lessonId: null, sessionId: null };
+
+const initialTourComplete = getInitialTourComplete();
 
 export const useAppStore = create<AppState>((set) => ({
   view: initialRoute.view,
@@ -395,5 +419,16 @@ export const useAppStore = create<AppState>((set) => ({
     set(() => {
       persistLessonProgress([]);
       return { completedLessons: [] };
+    }),
+
+  tourComplete: initialTourComplete,
+  // Auto-open on first run for brand-new (non-persisted) users; explicit
+  // restarts go through openTour().
+  tourOpen: !initialTourComplete,
+  openTour: () => set({ tourOpen: true }),
+  finishTour: () =>
+    set(() => {
+      persistTourComplete();
+      return { tourOpen: false, tourComplete: true };
     }),
 }));

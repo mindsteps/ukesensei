@@ -1,10 +1,13 @@
 import { Logo } from './Logo';
+import { useAppStore } from '../store/useAppStore';
 
 /**
  * Static informational page describing what Uke Sensei is and how it works.
- * No app state dependencies — safe to render standalone inside Layout.
+ * Only app-state dependency is the tour restart button below.
  */
 export function About() {
+  const openTour = useAppStore((s) => s.openTour);
+
   return (
     <div className="max-w-2xl mx-auto py-6 sm:py-10 space-y-8">
       <div className="text-center space-y-3">
@@ -17,6 +20,12 @@ export function About() {
           chords in real time, and guides you through exercises and lessons on an interactive
           fretboard.
         </p>
+        <button
+          onClick={openTour}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--c-accent)] hover:underline"
+        >
+          Take the tour →
+        </button>
       </div>
 
       <div className="space-y-6">
