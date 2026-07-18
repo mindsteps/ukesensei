@@ -7,7 +7,8 @@ export type StringInstrument = 'ukulele' | 'bass' | 'guitar';
 /** Voice has no strings/frets either — it uses a vocal practice range instead (see voiceRange.ts). */
 /** Handpan has no strings/frets either — it uses a fixed tone-field layout instead (see handpanLayout.ts). */
 /** Cajon is percussive with no stable pitch — it uses hit-type/rhythm grading instead (see cajonPatterns.ts). */
-export type Instrument = StringInstrument | 'clarinet' | 'voice' | 'handpan' | 'cajon';
+/** Harmonica has no strings/frets either — it uses a fixed hole blow/draw layout instead (see harmonicaLayout.ts). */
+export type Instrument = StringInstrument | 'clarinet' | 'voice' | 'handpan' | 'cajon' | 'harmonica';
 
 export function isStringInstrument(instrument: Instrument): instrument is StringInstrument {
   return instrument === 'ukulele' || instrument === 'bass' || instrument === 'guitar';

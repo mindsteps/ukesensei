@@ -65,6 +65,7 @@ export function Layout({
                 <option value="bass">Bass</option>
                 <option value="guitar">Guitar</option>
                 <option value="clarinet">Clarinet</option>
+                <option value="harmonica">Harmonica</option>
                 <option value="voice">Voice</option>
                 <option value="handpan">Handpan</option>
                 <option value="cajon">Cajón</option>

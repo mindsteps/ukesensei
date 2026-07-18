@@ -38,6 +38,8 @@ import { ClarinetPanel } from './components/ClarinetPanel';
 import { VoicePanel } from './components/VoicePanel';
 import { HandpanPanel } from './components/HandpanPanel';
 import { useHandpanSynth } from './audio/useHandpanSynth';
+import { HarmonicaPanel } from './components/HarmonicaPanel';
+import { useHarmonicaSynth } from './audio/useHarmonicaSynth';
 import { CajonPanel } from './components/CajonPanel';
 import { useCajonSynth } from './audio/useCajonSynth';
 import { useOnsetDetection } from './audio/useOnsetDetection';
@@ -104,11 +106,13 @@ export default function App() {
   const clarinetSynth = useClarinetSynth();
   const voiceSynth = useVoiceSynth();
   const handpanSynth = useHandpanSynth();
+  const harmonicaSynth = useHarmonicaSynth();
   const synth = instrument === 'bass' ? bassSynth
     : instrument === 'guitar' ? guitarSynth
     : instrument === 'clarinet' ? clarinetSynth
     : instrument === 'voice' ? voiceSynth
     : instrument === 'handpan' ? handpanSynth
+    : instrument === 'harmonica' ? harmonicaSynth
     : ukeSynth;
 
   const cajonSynth = useCajonSynth();
@@ -849,6 +853,10 @@ export default function App() {
           <div className="mx-auto sm:mx-0">
             <CajonPanel detectedHit={detectedHit} onPlayHit={previewHit} />
           </div>
+        ) : instrument === 'harmonica' ? (
+          <div className="mx-auto sm:mx-0">
+            <HarmonicaPanel detectedNote={detectedNote} onPlayNote={previewNote} />
+          </div>
         ) : (
           <>
             <div className="flex-1 bg-[var(--c-surface-half)] rounded-xl sm:rounded-2xl p-2 sm:p-4 border border-[var(--c-border-half)] min-w-0 order-1">
@@ -987,7 +995,7 @@ export default function App() {
         {/* Free play controls */}
         {view === 'freeplay' && !exercise && !rhythmExercise && (
           <div className="space-y-6">
-            {instrument !== 'clarinet' && instrument !== 'voice' && instrument !== 'handpan' && instrument !== 'cajon' && (
+            {instrument !== 'clarinet' && instrument !== 'voice' && instrument !== 'handpan' && instrument !== 'cajon' && instrument !== 'harmonica' && (
               <FreePlayControls
                 root={selectedRoot}
                 scale={selectedScale}

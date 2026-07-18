@@ -5,6 +5,7 @@ import { bassTechniqueCurriculum } from './bassTechniqueCurriculum';
 import { voiceCurriculum } from './voiceCurriculum';
 import { handpanCurriculum } from './handpanCurriculum';
 import { cajonCurriculum } from './cajonCurriculum';
+import { harmonicaCurriculum } from './harmonicaCurriculum';
 
 /** Maps each instrument to its lesson curriculum, if it has one. Guitar and clarinet have none yet. */
 export const CURRICULA: Partial<Record<Instrument, Curriculum>> = {
@@ -13,6 +14,7 @@ export const CURRICULA: Partial<Record<Instrument, Curriculum>> = {
   voice: voiceCurriculum,
   handpan: handpanCurriculum,
   cajon: cajonCurriculum,
+  harmonica: harmonicaCurriculum,
 };
 
 export function getCurriculumForInstrument(instrument: Instrument): Curriculum | null {

@@ -90,7 +90,7 @@ function getInitialInstrument(): Instrument {
   const stored = localStorage.getItem(INSTRUMENT_KEY);
   if (
     stored === 'ukulele' || stored === 'bass' || stored === 'guitar' || stored === 'clarinet' ||
-    stored === 'voice' || stored === 'handpan' || stored === 'cajon'
+    stored === 'voice' || stored === 'handpan' || stored === 'cajon' || stored === 'harmonica'
   ) return stored;
   return 'ukulele';
 }
