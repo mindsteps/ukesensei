@@ -376,7 +376,7 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
           <Fretboard
             tuning={tuning}
             root={activeMelodyNote?.note ?? 'C'}
-            scaleKey="major"
+            scaleKey="ionian"
             showScale={false}
             detectedNote={activeMelodyNote}
           />
