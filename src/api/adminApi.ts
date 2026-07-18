@@ -57,55 +57,61 @@ export interface AdminSharedLink {
   created_at: string;
 }
 
-export async function fetchAdminOverview(): Promise<AdminOverview> {
+async function getAccessToken(): Promise<string | null> {
   const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase not configured');
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
 
-  const { data, error } = await supabase.rpc('admin_get_overview');
-  if (error) throw error;
-  return data as AdminOverview;
+/**
+ * All admin data goes through our own `/api/admin/*` REST endpoints rather
+ * than calling Supabase directly from the browser — the endpoints forward
+ * this session token to the same `admin_*` RPCs (see supabase/admin.sql),
+ * which still do their own `is_admin_user()` check server-side.
+ */
+async function callAdminApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await getAccessToken();
+  if (!token) throw new Error('Not signed in');
+
+  const res = await fetch(`/api/admin/${path}`, {
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.error ?? `Admin API request failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchAdminOverview(): Promise<AdminOverview> {
+  return callAdminApi<AdminOverview>('overview');
 }
 
 export async function fetchAdminTopUsers(limit = 15): Promise<AdminTopUser[]> {
-  const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase not configured');
-
-  const { data, error } = await supabase.rpc('admin_get_top_users', { row_limit: limit });
-  if (error) throw error;
-  return (data ?? []) as AdminTopUser[];
+  return callAdminApi<AdminTopUser[]>(`top-users?limit=${limit}`);
 }
 
 export async function fetchAdminRecentLogins(limit = 20): Promise<AdminRecentLogin[]> {
-  const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase not configured');
-
-  const { data, error } = await supabase.rpc('admin_get_recent_logins', { row_limit: limit });
-  if (error) throw error;
-  return (data ?? []) as AdminRecentLogin[];
+  return callAdminApi<AdminRecentLogin[]>(`recent-logins?limit=${limit}`);
 }
 
 export async function fetchAdminUsers(limit = 50): Promise<AdminUserRow[]> {
-  const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase not configured');
-
-  const { data, error } = await supabase.rpc('admin_list_users', { row_limit: limit });
-  if (error) throw error;
-  return (data ?? []) as AdminUserRow[];
+  return callAdminApi<AdminUserRow[]>(`users?limit=${limit}`);
 }
 
 export async function fetchAdminSharedLinks(limit = 50): Promise<AdminSharedLink[]> {
-  const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase not configured');
-
-  const { data, error } = await supabase.rpc('admin_list_shared_links', { row_limit: limit });
-  if (error) throw error;
-  return (data ?? []) as AdminSharedLink[];
+  return callAdminApi<AdminSharedLink[]>(`shared-links?limit=${limit}`);
 }
 
 export async function adminRevokeSharedLink(linkId: string): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase) throw new Error('Supabase not configured');
-
-  const { error } = await supabase.rpc('admin_revoke_shared_link', { p_link_id: linkId });
-  if (error) throw error;
+  await callAdminApi<{ ok: true }>('revoke-shared-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ linkId }),
+  });
 }

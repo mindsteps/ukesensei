@@ -115,7 +115,7 @@ begin
     p.preferred_key,
     p.onboarding_complete,
     count(ps.id) as session_count,
-    coalesce(sum(ps.duration_sec), 0) as practice_sec,
+    coalesce(sum(ps.duration_sec), 0)::numeric as practice_sec,
     (select count(*) from public.lesson_progress lp where lp.user_id = p.id) as lessons_completed,
     u.last_sign_in_at as last_sign_in,
     p.created_at
