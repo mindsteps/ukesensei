@@ -24,6 +24,8 @@ const TOP_MARGIN = 28;
 const PADDING = 30;
 const MEASURES_PER_LINE = 2;
 const ACTIVE_NOTE_COLOR = '#2dd4bf';
+/** VexFlow's default fret-number size is 9pt, which reads small on a tab staff. */
+const TAB_FRET_FONT_SIZE = 13;
 
 export function TabScore({
   notes,
@@ -67,8 +69,16 @@ export function TabScore({
 
     (async () => {
       try {
-        const { Factory, Voice, Beam, Fraction, Formatter, StaveModifierPosition, TabStave, TabNote, GhostNote } = await import('vexflow');
+        const { Factory, Voice, Beam, Fraction, Formatter, StaveModifierPosition, TabStave, TabNote, GhostNote, Metrics, MetricsDefaults } = await import('vexflow');
         if (cancelled) return;
+
+        // VexFlow's default fret-number size (9pt) reads as quite small on a
+        // tab staff; bump it up for legibility. This is a global (module-level)
+        // default, so only touch it if it hasn't already been enlarged.
+        if (MetricsDefaults.TabNote.text.fontSize < TAB_FRET_FONT_SIZE) {
+          MetricsDefaults.TabNote.text.fontSize = TAB_FRET_FONT_SIZE;
+          Metrics.clear('TabNote.text');
+        }
 
         const width = Math.max(320, container.clientWidth || 640);
         // A custom TabStave/Voice per measure isn't tracked by Factory's own
