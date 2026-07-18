@@ -148,12 +148,39 @@ export function SheetMusicScore({
         noteElementsRef.current = noteElements;
 
         if (onNoteClick) {
+          const svgEl = container.querySelector('svg');
+          // Click on a transparent rect sized larger than the notehead itself
+          // (rather than the note's own glyph) so: (1) the hit area is
+          // comfortably bigger than the tiny notehead/stem paths, and (2) the
+          // click never lands on the underlying SVG text/path glyphs, which
+          // avoids the browser placing a blinking text-selection caret when
+          // you click directly on notation glyphs.
+          const HIT_PADDING_X = 10;
+          const HIT_PADDING_Y = 14;
           for (const [noteIndex, vexNotes] of noteElements) {
             for (const vexNote of vexNotes) {
               const el = vexNote.getSVGElement();
-              if (!el) continue;
-              el.style.cursor = 'pointer';
-              el.addEventListener('click', () => onNoteClick(noteIndex));
+              if (!el || !svgEl || !(el instanceof SVGGraphicsElement)) continue;
+              const bbox = el.getBBox();
+              const hitRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+              hitRect.setAttribute('x', String(bbox.x - HIT_PADDING_X));
+              hitRect.setAttribute('y', String(bbox.y - HIT_PADDING_Y));
+              hitRect.setAttribute('width', String(bbox.width + HIT_PADDING_X * 2));
+              hitRect.setAttribute('height', String(bbox.height + HIT_PADDING_Y * 2));
+              hitRect.setAttribute('fill', 'transparent');
+              // VexFlow's root <svg> sets stroke="black" and pointer-events="none"
+              // as drawing defaults, and both are inheritable SVG properties --
+              // override them explicitly, otherwise this rect would inherit a
+              // visible black outline and (since a fully transparent fill isn't
+              // "painted" under the default pointer-events value) wouldn't
+              // register clicks at all.
+              hitRect.setAttribute('stroke', 'none');
+              hitRect.setAttribute('pointer-events', 'all');
+              hitRect.style.cursor = 'pointer';
+              hitRect.style.userSelect = 'none';
+              hitRect.addEventListener('mousedown', (e) => e.preventDefault());
+              hitRect.addEventListener('click', () => onNoteClick(noteIndex));
+              svgEl.appendChild(hitRect);
             }
           }
         }
@@ -212,7 +239,7 @@ export function SheetMusicScore({
       )}
       <div
         id={elementId}
-        className="w-full overflow-x-auto bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)]"
+        className="w-full overflow-x-auto bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] select-none"
         style={{ minHeight: height }}
       />
     </div>
