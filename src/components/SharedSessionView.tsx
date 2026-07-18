@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSharedSession, getSharedAudioUrl, type SharedSessionResult } from '../storage/shareStore';
 import { SCALE_DEFINITIONS } from '../theory/scales';
+import { sessionNotesToMelody } from '../theory/staff';
+import { instrumentFromTuningKey } from '../theory/fretboard';
 import { Logo } from './Logo';
+import { SheetMusicView } from './SheetMusicView';
 
 /**
  * Fully standalone page for `/s/:token` — rendered outside AuthGate/App, so
@@ -15,6 +18,11 @@ export function SharedSessionView({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const melodyNotes = useMemo(
+    () => (result ? sessionNotesToMelody(result.session.notes, result.session.startedAt) : []),
+    [result],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +119,16 @@ export function SharedSessionView({ token }: { token: string }) {
               <div className="bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] p-4 text-center">
                 <p className="text-sm text-[var(--c-text-muted)]">No audio recording for this session</p>
               </div>
+            )}
+
+            {melodyNotes.length > 0 && (
+              <SheetMusicView
+                notes={melodyNotes}
+                instrument={instrumentFromTuningKey(result.session.tuningKey)}
+                tuningKey={result.session.tuningKey}
+                title="Sheet Music"
+                chords={result.session.chords ?? undefined}
+              />
             )}
 
             <div className="text-center pt-4">

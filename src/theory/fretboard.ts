@@ -122,6 +122,18 @@ export function findTuningByKey(tuningKey: string): InstrumentTuning | null {
   return null;
 }
 
+/**
+ * Recovers which string instrument a saved tuning key belongs to. Sessions
+ * only persist `tuningKey` (not `instrument`), so this leans on the `bass_`/
+ * `guitar_` prefix convention used by BASS_TUNINGS/GUITAR_TUNINGS; anything
+ * else is assumed to be a ukulele tuning (`standard`, `low_g`, ...).
+ */
+export function instrumentFromTuningKey(tuningKey: string): StringInstrument {
+  if (tuningKey.startsWith('bass_')) return 'bass';
+  if (tuningKey.startsWith('guitar_')) return 'guitar';
+  return 'ukulele';
+}
+
 export const NUM_FRETS = 15;
 export const FRET_MARKERS = [5, 7, 10, 12];
 export const DOUBLE_FRET_MARKERS = [12];

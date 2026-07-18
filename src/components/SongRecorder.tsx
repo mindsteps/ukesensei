@@ -5,8 +5,9 @@ import { findTuningByKey, isStringInstrument } from '../theory/fretboard';
 import { inferSongChords } from '../theory/harmony';
 import { useAudioRecorder } from '../audio/useAudioRecorder';
 import { useAudioClock } from '../audio/useAudioClock';
+import { useInstrumentSynth } from '../audio/useInstrumentSynth';
 import { transcribeAudioBlob } from '../audio/transcribeAudio';
-import { SheetMusicScore } from './SheetMusicScore';
+import { SheetMusicView } from './SheetMusicView';
 import { Fretboard } from './Fretboard/Fretboard';
 import { uploadSession } from '../api/sessionApi';
 
@@ -73,6 +74,7 @@ export function SongRecorder({
     audioRef, currentTime, duration, isPlaying, toggle: togglePlayback, seek: seekTo,
     reset: resetClock, handleLoadedMetadata, handleEnded,
   } = useAudioClock();
+  const synth = useInstrumentSynth(instrument);
 
   // Recording always captures the full take first; pitch/note detection only
   // ever runs afterward on the finished audio, so a slow or missed live
@@ -149,7 +151,9 @@ export function SongRecorder({
 
   const handleNoteClick = useCallback((index: number) => {
     setSelectedNoteIndex(index);
-  }, []);
+    const note = (finishedNotes ?? [])[index];
+    if (note) synth.playNote(note.note, note.octave);
+  }, [finishedNotes, synth]);
 
   // Computed once here (rather than left for SheetMusicScore to infer on its
   // own) so the exact same chords shown in the preview are what gets saved.
@@ -307,8 +311,10 @@ export function SongRecorder({
       )}
 
       {!recording && (finishedNotes || transcribing) && (
-        <SheetMusicScore
+        <SheetMusicView
           notes={finishedNotes ?? []}
+          instrument={instrument}
+          tuningKey={tuningKey}
           title={transcribing ? 'Detecting notes…' : 'Sheet music'}
           activeNoteIndex={displayNoteIndex}
           chords={chordLabels}

@@ -11,15 +11,16 @@ import {
 import { AudioWaveform } from './AudioWaveform';
 import { StringWaveform } from './StringWaveform';
 import { PlaybackFftVisualizer } from './PlaybackFftVisualizer';
-import { SheetMusicScore } from './SheetMusicScore';
+import { SheetMusicView } from './SheetMusicView';
 import { ShareModal } from './ShareModal';
 import { Fretboard } from './Fretboard/Fretboard';
 import { findActiveMelodyNoteIndex, sessionNotesToMelody } from '../theory/staff';
 import { SCALE_DEFINITIONS } from '../theory/scales';
-import { findTuningByKey } from '../theory/fretboard';
+import { findTuningByKey, instrumentFromTuningKey } from '../theory/fretboard';
 import { isCloudSessionId } from '../storage/cloudSessionStore';
 import { useAuth } from '../auth/AuthProvider';
 import { useAudioClock } from '../audio/useAudioClock';
+import { useInstrumentSynth } from '../audio/useInstrumentSynth';
 
 interface SessionPlaybackProps {
   sessionId: string;
@@ -131,9 +132,15 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
     [session],
   );
 
+  // Hooks must run unconditionally, before the loading/error early returns
+  // below, so fall back to a default instrument until the session loads.
+  const synth = useInstrumentSynth(session ? instrumentFromTuningKey(session.tuningKey) : 'ukulele');
+
   const handleNoteClick = useCallback((index: number) => {
     setSelectedNoteIndex(index);
-  }, []);
+    const note = melodyNotes[index];
+    if (note) synth.playNote(note.note, note.octave);
+  }, [melodyNotes, synth]);
 
   if (loading) {
     return <div className="text-center py-12 text-(--c-text-muted)">Loading session...</div>;
@@ -368,8 +375,10 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
 
       {/* Sheet music */}
       {melodyNotes.length > 0 && (
-        <SheetMusicScore
+        <SheetMusicView
           notes={melodyNotes}
+          instrument={instrumentFromTuningKey(session.tuningKey)}
+          tuningKey={session.tuningKey}
           title="Sheet Music"
           activeNoteIndex={displayNoteIndex}
           chords={session.chords ?? undefined}

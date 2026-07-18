@@ -161,6 +161,10 @@ export interface MeasureToken {
   token: string;
   /** Index into the original (unquantized) `notes` array this token was derived from, or null for a rest. */
   noteIndex: number | null;
+  /** VexFlow duration code (e.g. "q", "8", "h"), for renderers that build notes directly (e.g. tab) instead of via EasyScore. */
+  duration: string;
+  /** Number of rhythmic dots on this token's duration. */
+  dots: number;
 }
 
 export interface QuantizedMelody {
@@ -220,7 +224,7 @@ export function quantizeMelody(notes: MelodyNote[], bpm: number = estimateBpm(no
     while (remaining > 0) {
       const chunk = Math.min(remaining, TICKS_PER_MEASURE - measurePos);
       for (const { duration, dots } of decomposeTicks(chunk)) {
-        measures[measures.length - 1].push({ token: easyScoreToken(pitch, duration, dots), noteIndex });
+        measures[measures.length - 1].push({ token: easyScoreToken(pitch, duration, dots), noteIndex, duration, dots });
       }
       measurePos += chunk;
       remaining -= chunk;
