@@ -13,6 +13,7 @@ import { StringWaveform } from './StringWaveform';
 import { PlaybackFftVisualizer } from './PlaybackFftVisualizer';
 import { DetectedNotesList } from './DetectedNotesList';
 import { SheetMusicView } from './SheetMusicView';
+import { ChordRow } from './ChordRow';
 import { ShareModal } from './ShareModal';
 import { Fretboard } from './Fretboard/Fretboard';
 import {
@@ -23,6 +24,8 @@ import {
   sessionNotesToMelody,
   type TimedMelodyEvent,
 } from '../theory/staff';
+import { inferSongChords } from '../theory/harmony';
+import type { ChordInstrument } from '../theory/chords';
 import { SCALE_DEFINITIONS } from '../theory/scales';
 import { findTuningByKey, instrumentFromTuningKey } from '../theory/fretboard';
 import { isCloudSessionId } from '../storage/cloudSessionStore';
@@ -47,6 +50,7 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedNoteIndex, setSelectedNoteIndex] = useState<number | null>(null);
   const [showSheetMusic, setShowSheetMusic] = useState(false);
+  const [chordInstrument, setChordInstrument] = useState<ChordInstrument>('ukulele');
   const { user } = useAuth();
 
   const {
@@ -65,6 +69,10 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
         const sess = await getSession(sessionId);
         if (cancelled) return;
         setSession(sess);
+        const inferredInstrument = instrumentFromTuningKey(sess.tuningKey);
+        if (inferredInstrument === 'ukulele' || inferredInstrument === 'guitar') {
+          setChordInstrument(inferredInstrument);
+        }
 
         if (sess.analysisStatus === 'complete') {
           try {
@@ -147,6 +155,12 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
   const timedEvents = useMemo(
     () => quantizedMelodyToTimedEvents(melodyNotes, quantized),
     [melodyNotes, quantized],
+  );
+  // Chords are shown independent of the sheet music toggle: prefer whatever
+  // was saved with the session, otherwise infer from the quantized measures.
+  const chordLabels = useMemo(
+    () => session?.chords ?? inferSongChords(melodyNotes, quantized.measures),
+    [session, melodyNotes, quantized],
   );
 
   // Hooks must run unconditionally, before the loading/error early returns
@@ -422,6 +436,32 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
         />
       )}
 
+      {/* Detected chords */}
+      {chordLabels.some((c) => c !== null) && (
+        <div className="bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[10px] text-[var(--c-text-muted)] font-medium uppercase tracking-wider">
+              Chords
+            </div>
+            <div className="flex rounded-lg border border-[var(--c-border)] overflow-hidden text-xs font-medium shrink-0">
+              <button
+                onClick={() => setChordInstrument('ukulele')}
+                className={`px-3 py-1 transition ${chordInstrument === 'ukulele' ? 'bg-teal-600 text-white' : 'text-[var(--c-text-muted)] hover:text-[var(--c-text)]'}`}
+              >
+                Ukulele
+              </button>
+              <button
+                onClick={() => setChordInstrument('guitar')}
+                className={`px-3 py-1 transition ${chordInstrument === 'guitar' ? 'bg-teal-600 text-white' : 'text-[var(--c-text-muted)] hover:text-[var(--c-text)]'}`}
+              >
+                Guitar
+              </button>
+            </div>
+          </div>
+          <ChordRow chords={chordLabels} instrument={chordInstrument} />
+        </div>
+      )}
+
       {/* Sheet music / tab — opt-in, since the tempo-grid quantization behind
           it is still unverified and may need reworking. */}
       {melodyNotes.length > 0 && !showSheetMusic && (
@@ -446,7 +486,7 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
             tuningKey={session.tuningKey}
             title="Sheet Music (experimental)"
             activeNoteIndex={displayNoteIndex}
-            chords={session.chords ?? undefined}
+            chords={chordLabels}
             onNoteClick={handleNoteClick}
             synthPlayback={isPitchedSynth(synth) ? { isPlaying: synthPlayback.isPlaying, onToggle: handleToggleSynthPlayback } : undefined}
           />
