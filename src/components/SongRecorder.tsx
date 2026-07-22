@@ -1,21 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Instrument, TuningKey } from '../store/useAppStore';
 import {
   findActiveMelodyNoteIndex,
-  findActiveTimedEventIndex,
-  quantizeMelody,
-  quantizedMelodyToTimedEvents,
   type MelodyNote,
-  type TimedMelodyEvent,
 } from '../theory/staff';
 import { findTuningByKey, isStringInstrument } from '../theory/fretboard';
-import { inferSongChords } from '../theory/harmony';
 import { useAudioRecorder } from '../audio/useAudioRecorder';
 import { useAudioClock } from '../audio/useAudioClock';
 import { useInstrumentSynth, isPitchedSynth } from '../audio/useInstrumentSynth';
-import { useMelodyPlayback } from '../audio/useMelodyPlayback';
 import { transcribeAudioBlob } from '../audio/transcribeAudio';
-import { SheetMusicView } from './SheetMusicView';
+import { DetectedNotesList } from './DetectedNotesList';
 import { Fretboard } from './Fretboard/Fretboard';
 import { uploadSession } from '../api/sessionApi';
 
@@ -83,17 +77,6 @@ export function SongRecorder({
     reset: resetClock, handleLoadedMetadata, handleEnded,
   } = useAudioClock();
   const synth = useInstrumentSynth(instrument);
-  // The same quantized rhythm the sheet music notates, so synth playback is
-  // timed to the notated durations/tempo rather than raw pitch-detection jitter.
-  const quantized = useMemo(() => quantizeMelody(finishedNotes ?? []), [finishedNotes]);
-  const timedEvents = useMemo(
-    () => quantizedMelodyToTimedEvents(finishedNotes ?? [], quantized),
-    [finishedNotes, quantized],
-  );
-  const playMelodyNote = useCallback((event: TimedMelodyEvent) => {
-    if (isPitchedSynth(synth)) synth.playNote(event.note, event.octave);
-  }, [synth]);
-  const synthPlayback = useMelodyPlayback(timedEvents, playMelodyNote);
 
   // Recording always captures the full take first; pitch/note detection only
   // ever runs afterward on the finished audio, so a slow or missed live
@@ -174,24 +157,6 @@ export function SongRecorder({
     if (note && isPitchedSynth(synth)) synth.playNote(note.note, note.octave);
   }, [finishedNotes, synth]);
 
-  // Only one playback source should be audible/driving the cursor at a time.
-  useEffect(() => {
-    if (isPlaying) synthPlayback.pause();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying]);
-  const handleToggleSynthPlayback = useCallback(() => {
-    if (isPlaying) togglePlayback();
-    synthPlayback.toggle();
-  }, [isPlaying, togglePlayback, synthPlayback]);
-
-  // Computed once here (rather than left for SheetMusicScore to infer on its
-  // own) so the exact same chords shown in the preview are what gets saved.
-  const { measures } = quantized;
-  const chordLabels = useMemo(
-    () => inferSongChords(finishedNotes ?? [], measures),
-    [finishedNotes, measures],
-  );
-
   const handleSave = useCallback(async () => {
     if (!sessionTimes) return;
     const notes = finishedNotes ?? [];
@@ -210,7 +175,6 @@ export function SongRecorder({
         timingOnTimePercent: 1,
         overallScore: 1,
         notes: melodyToSessionNotes(notes, sessionTimes.start),
-        chords: chordLabels,
       });
       setSaveMessage(local ? 'Saved to library (on this device)' : 'Saved to your library');
     } catch {
@@ -218,7 +182,7 @@ export function SongRecorder({
     } finally {
       setSaving(false);
     }
-  }, [finishedNotes, recordedBlob, sessionTimes, tuningKey, chordLabels]);
+  }, [finishedNotes, recordedBlob, sessionTimes, tuningKey]);
 
   const handleSeekBar = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!duration) return;
@@ -230,16 +194,9 @@ export function SongRecorder({
   const playingNoteIndex = audioUrl
     ? findActiveMelodyNoteIndex(finishedNotes ?? [], currentTime * 1000)
     : -1;
-  const synthPlayingNoteIndex = synthPlayback.isPlaying
-    ? findActiveTimedEventIndex(timedEvents, synthPlayback.currentTime * 1000)
-    : -1;
   // Whichever transport is actively moving wins; otherwise show whichever
-  // note was last clicked in the sheet music, if any.
-  const displayNoteIndex = isPlaying
-    ? playingNoteIndex
-    : synthPlayback.isPlaying
-      ? synthPlayingNoteIndex
-      : (selectedNoteIndex ?? playingNoteIndex);
+  // note was last clicked in the list, if any.
+  const displayNoteIndex = isPlaying ? playingNoteIndex : (selectedNoteIndex ?? playingNoteIndex);
   const displayedMelodyNote = displayNoteIndex >= 0 ? (finishedNotes ?? [])[displayNoteIndex] : null;
   const tuning = isStringInstrument(instrument) ? findTuningByKey(tuningKey) : null;
 
@@ -347,15 +304,11 @@ export function SongRecorder({
       )}
 
       {!recording && (finishedNotes || transcribing) && (
-        <SheetMusicView
+        <DetectedNotesList
           notes={finishedNotes ?? []}
-          instrument={instrument}
-          tuningKey={tuningKey}
-          title={transcribing ? 'Detecting notes…' : 'Sheet music'}
+          title={transcribing ? 'Detecting notes…' : 'Detected notes'}
           activeNoteIndex={displayNoteIndex}
-          chords={chordLabels}
           onNoteClick={handleNoteClick}
-          synthPlayback={!transcribing && isPitchedSynth(synth) ? { isPlaying: synthPlayback.isPlaying, onToggle: handleToggleSynthPlayback } : undefined}
         />
       )}
 

@@ -1,18 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSharedSession, getSharedAudioUrl, type SharedSessionResult } from '../storage/shareStore';
 import { SCALE_DEFINITIONS } from '../theory/scales';
-import {
-  findActiveTimedEventIndex,
-  quantizeMelody,
-  quantizedMelodyToTimedEvents,
-  sessionNotesToMelody,
-  type TimedMelodyEvent,
-} from '../theory/staff';
-import { instrumentFromTuningKey } from '../theory/fretboard';
+import { sessionNotesToMelody } from '../theory/staff';
 import { Logo } from './Logo';
-import { SheetMusicView } from './SheetMusicView';
-import { useInstrumentSynth, isPitchedSynth } from '../audio/useInstrumentSynth';
-import { useMelodyPlayback } from '../audio/useMelodyPlayback';
+import { DetectedNotesList } from './DetectedNotesList';
 
 /**
  * Fully standalone page for `/s/:token` — rendered outside AuthGate/App, so
@@ -31,23 +22,6 @@ export function SharedSessionView({ token }: { token: string }) {
     () => (result ? sessionNotesToMelody(result.session.notes, result.session.startedAt) : []),
     [result],
   );
-
-  // The same quantized rhythm the sheet music notates, so synth playback is
-  // timed to the notated durations/tempo rather than raw pitch-detection jitter.
-  const quantized = useMemo(() => quantizeMelody(melodyNotes), [melodyNotes]);
-  const timedEvents = useMemo(
-    () => quantizedMelodyToTimedEvents(melodyNotes, quantized),
-    [melodyNotes, quantized],
-  );
-
-  const synth = useInstrumentSynth(result ? instrumentFromTuningKey(result.session.tuningKey) : 'ukulele');
-  const playMelodyNote = useCallback((event: TimedMelodyEvent) => {
-    if (isPitchedSynth(synth)) synth.playNote(event.note, event.octave);
-  }, [synth]);
-  const synthPlayback = useMelodyPlayback(timedEvents, playMelodyNote);
-  const synthPlayingNoteIndex = synthPlayback.isPlaying
-    ? findActiveTimedEventIndex(timedEvents, synthPlayback.currentTime * 1000)
-    : -1;
 
   useEffect(() => {
     let cancelled = false;
@@ -131,7 +105,7 @@ export function SharedSessionView({ token }: { token: string }) {
 
             {audioUrl ? (
               <div className="bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] p-3 space-y-2">
-                <audio ref={audioRef} src={audioUrl} controls className="w-full" onPlay={synthPlayback.pause} />
+                <audio ref={audioRef} src={audioUrl} controls className="w-full" />
                 <button
                   onClick={handleDownload}
                   disabled={downloading}
@@ -147,21 +121,9 @@ export function SharedSessionView({ token }: { token: string }) {
             )}
 
             {melodyNotes.length > 0 && (
-              <SheetMusicView
-                notes={melodyNotes}
-                instrument={instrumentFromTuningKey(result.session.tuningKey)}
-                tuningKey={result.session.tuningKey}
-                title="Sheet Music"
-                activeNoteIndex={synthPlayingNoteIndex}
-                chords={result.session.chords ?? undefined}
-                synthPlayback={isPitchedSynth(synth) ? {
-                  isPlaying: synthPlayback.isPlaying,
-                  onToggle: () => {
-                    audioRef.current?.pause();
-                    synthPlayback.toggle();
-                  },
-                } : undefined}
-              />
+              <div className="bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] p-3">
+                <DetectedNotesList notes={melodyNotes} title="Detected notes" />
+              </div>
             )}
 
             <div className="text-center pt-4">

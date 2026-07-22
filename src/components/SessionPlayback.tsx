@@ -11,16 +11,12 @@ import {
 import { AudioWaveform } from './AudioWaveform';
 import { StringWaveform } from './StringWaveform';
 import { PlaybackFftVisualizer } from './PlaybackFftVisualizer';
-import { SheetMusicView } from './SheetMusicView';
+import { DetectedNotesList } from './DetectedNotesList';
 import { ShareModal } from './ShareModal';
 import { Fretboard } from './Fretboard/Fretboard';
 import {
   findActiveMelodyNoteIndex,
-  findActiveTimedEventIndex,
-  quantizeMelody,
-  quantizedMelodyToTimedEvents,
   sessionNotesToMelody,
-  type TimedMelodyEvent,
 } from '../theory/staff';
 import { SCALE_DEFINITIONS } from '../theory/scales';
 import { findTuningByKey, instrumentFromTuningKey } from '../theory/fretboard';
@@ -28,7 +24,6 @@ import { isCloudSessionId } from '../storage/cloudSessionStore';
 import { useAuth } from '../auth/AuthProvider';
 import { useAudioClock } from '../audio/useAudioClock';
 import { useInstrumentSynth, isPitchedSynth } from '../audio/useInstrumentSynth';
-import { useMelodyPlayback } from '../audio/useMelodyPlayback';
 
 interface SessionPlaybackProps {
   sessionId: string;
@@ -139,38 +134,16 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
     () => session ? sessionNotesToMelody(session.notes, session.startedAt) : [],
     [session],
   );
-  // The same quantized rhythm the sheet music notates, so synth playback is
-  // timed to the notated durations/tempo rather than raw pitch-detection jitter.
-  const quantized = useMemo(() => quantizeMelody(melodyNotes), [melodyNotes]);
-  const timedEvents = useMemo(
-    () => quantizedMelodyToTimedEvents(melodyNotes, quantized),
-    [melodyNotes, quantized],
-  );
 
   // Hooks must run unconditionally, before the loading/error early returns
   // below, so fall back to a default instrument until the session loads.
   const synth = useInstrumentSynth(session ? instrumentFromTuningKey(session.tuningKey) : 'ukulele');
-
-  const playMelodyNote = useCallback((event: TimedMelodyEvent) => {
-    if (isPitchedSynth(synth)) synth.playNote(event.note, event.octave);
-  }, [synth]);
-  const synthPlayback = useMelodyPlayback(timedEvents, playMelodyNote);
 
   const handleNoteClick = useCallback((index: number) => {
     setSelectedNoteIndex(index);
     const note = melodyNotes[index];
     if (note && isPitchedSynth(synth)) synth.playNote(note.note, note.octave);
   }, [melodyNotes, synth]);
-
-  // Only one playback source should be audible/driving the cursor at a time.
-  useEffect(() => {
-    if (isPlaying) synthPlayback.pause();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying]);
-  const handleToggleSynthPlayback = useCallback(() => {
-    if (isPlaying) handlePlayPause();
-    synthPlayback.toggle();
-  }, [isPlaying, handlePlayPause, synthPlayback]);
 
   if (loading) {
     return <div className="text-center py-12 text-(--c-text-muted)">Loading session...</div>;
@@ -200,16 +173,9 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
   const timingColor = session.timingOnTimePercent >= 75 ? '#34d399' : session.timingOnTimePercent >= 40 ? '#fbbf24' : '#f87171';
   const scoreColor = session.overallScore >= 70 ? '#34d399' : session.overallScore >= 40 ? '#fbbf24' : '#f87171';
   const playingNoteIndex = audioUrl ? findActiveMelodyNoteIndex(melodyNotes, currentTime * 1000) : -1;
-  const synthPlayingNoteIndex = synthPlayback.isPlaying
-    ? findActiveTimedEventIndex(timedEvents, synthPlayback.currentTime * 1000)
-    : -1;
   // Whichever transport is actively moving wins; otherwise show whichever
-  // note was last clicked in the sheet music, if any.
-  const displayNoteIndex = isPlaying
-    ? playingNoteIndex
-    : synthPlayback.isPlaying
-      ? synthPlayingNoteIndex
-      : (selectedNoteIndex ?? playingNoteIndex);
+  // note was last clicked in the list, if any.
+  const displayNoteIndex = isPlaying ? playingNoteIndex : (selectedNoteIndex ?? playingNoteIndex);
   const displayedMelodyNote = displayNoteIndex >= 0 ? melodyNotes[displayNoteIndex] : null;
   const tuning = findTuningByKey(session.tuningKey);
 
@@ -410,22 +376,18 @@ export function SessionPlayback({ sessionId, onBack }: SessionPlaybackProps) {
         </div>
       )}
 
-      {/* Sheet music */}
+      {/* Detected notes */}
       {melodyNotes.length > 0 && (
-        <SheetMusicView
+        <DetectedNotesList
           notes={melodyNotes}
-          instrument={instrumentFromTuningKey(session.tuningKey)}
-          tuningKey={session.tuningKey}
-          title="Sheet Music"
+          title="Detected notes"
           activeNoteIndex={displayNoteIndex}
-          chords={session.chords ?? undefined}
           onNoteClick={handleNoteClick}
-          synthPlayback={isPitchedSynth(synth) ? { isPlaying: synthPlayback.isPlaying, onToggle: handleToggleSynthPlayback } : undefined}
         />
       )}
 
       {/* Fretboard, highlighting whichever note is playing (or was clicked) */}
-      {(audioUrl || synthPlayback.isPlaying || selectedNoteIndex !== null) && tuning && (
+      {(audioUrl || selectedNoteIndex !== null) && tuning && (
         <div className="bg-[var(--c-surface)] rounded-xl border border-[var(--c-border)] p-3">
           <div className="text-[10px] text-[var(--c-text-muted)] font-medium uppercase tracking-wider mb-1 px-0.5">
             Fretboard
