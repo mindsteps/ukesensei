@@ -148,12 +148,30 @@ export function FftVisualizer({ getAnalyser, isActive }: FftVisualizerProps) {
     let peak2Val = 0;
     if (peak1Bin >= 0) {
       const peak1Freq = peak1Bin * binHz;
-      // Exclude only bins right on top of the primary peak (~ a quarter-tone)
+      // Exclude bins right on top of the primary peak (~ a quarter-tone)
       // so we don't just pick a point on the same peak's skirt, while still
       // allowing genuinely close second notes to show.
       const exclusionHz = Math.max(peak1Freq * 0.02, binHz * 2);
+
+      // A single plucked/bowed/blown note is rarely a pure sine wave — it
+      // carries a harmonic series at 2x, 3x, 4x... the fundamental, often
+      // strong enough to register as its own local peak. Without filtering
+      // those out, a single note reliably gets mislabeled as a two-note
+      // chord/interval. So also exclude any candidate whose frequency sits
+      // close (within ~3%, in cents terms) to an integer multiple of peak1 --
+      // i.e. it's very likely an overtone of the same note, not a second one.
+      const isLikelyHarmonicOf = (freq: number, fundamental: number) => {
+        const ratio = freq / fundamental;
+        const nearestHarmonic = Math.round(ratio);
+        if (nearestHarmonic < 2) return false;
+        const centsOff = 1200 * Math.log2(ratio / nearestHarmonic);
+        return Math.abs(centsOff) < 40; // ~a third of a semitone tolerance
+      };
+
       for (let i = minBin; i <= maxBin; i++) {
-        if (Math.abs(i * binHz - peak1Freq) < exclusionHz) continue;
+        const freq = i * binHz;
+        if (Math.abs(freq - peak1Freq) < exclusionHz) continue;
+        if (isLikelyHarmonicOf(freq, peak1Freq)) continue;
         if (data[i] > peak2Val && isLocalPeak(i)) {
           peak2Val = data[i];
           peak2Bin = i;
