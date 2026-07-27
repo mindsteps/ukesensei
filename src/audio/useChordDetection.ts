@@ -1,24 +1,21 @@
-import { useRef, useEffect, useState } from 'react';
-import type { DetectedNote } from '../store/useAppStore';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import type { NoteName } from '../theory/notes';
+import { frequencyToNote } from '../theory/notes';
 import { CHORD_QUALITIES, detectChord, findVoicing, type ChordInstrument, type ChordVoicing } from '../theory/chords';
+import { AUDIO_CONFIG_BY_INSTRUMENT } from './noteUtils';
+import { detectPolyphonicFrequencies, dbToLinearMagnitudes } from './polyphonicPitch';
 
-const CHORD_WINDOW_MS = 800;
-const CHORD_MIN_UNIQUE_NOTES = 3;
-const CHORD_UPDATE_INTERVAL_MS = 150;
-const DOMINANT_NOTE_THRESHOLD = 0.75;
-// A note must appear at least this often to be considered real (filters harmonics / noise)
-const MIN_NOTE_FRACTION = 0.12;
-const MIN_NOTE_COUNT = 2;
-// Chord inference accumulates single-pitch readings over a window and infers
-// a chord from the resulting note set -- so it's far more sensitive to noisy/
-// ambiguous readings than just displaying "the current note" is. The
-// single-note display threshold was deliberately lowered (see noteUtils.ts)
-// to catch natural, breathy/vibrato-heavy tones, but feeding those same
-// low-confidence readings into the chord window is what let stray harmonics
-// and inter-string transients get miscounted as real notes, producing wrong
-// chord guesses (e.g. an A chord read as Gmaj7). Require a higher bar here.
-const CHORD_MIN_CLARITY = 0.8;
+// How often to actually re-run the polyphonic spectral analysis. This is
+// deliberately not every animation frame -- the analysis is a bit heavier
+// than simple peak-picking, and chords don't change fast enough to need it.
+const ANALYSIS_INTERVAL_MS = 100;
+// How long a rolling window of per-frame note-sets to keep, for majority-vote
+// smoothing against a single noisy frame (e.g. right at pluck attack).
+const CHORD_WINDOW_MS = 500;
+// A note must show up in at least this fraction of frames within the window
+// to be trusted as part of the chord (filters one-off spurious frames).
+const MIN_FRAME_FRACTION = 0.4;
+const CHORD_MIN_UNIQUE_NOTES = 2;
 
 export interface DetectedChord {
   root: NoteName;
@@ -28,74 +25,119 @@ export interface DetectedChord {
   timestamp: number;
 }
 
+interface FrameEntry {
+  notes: Set<NoteName>;
+  timestamp: number;
+}
+
+/**
+ * Real polyphonic chord detection: analyzes the live frequency spectrum for
+ * every simultaneously-sounding note (see polyphonicPitch.ts), rather than
+ * inferring a chord from a rolling window of single-pitch readings. This
+ * lets it correctly tell apart e.g. an A chord from a Gmaj7 even though a
+ * monophonic tracker sampling one string at a time could easily confuse the
+ * two when strings ring together.
+ */
 export function useChordDetection(
-  detectedNote: DetectedNote | null,
+  getAnalyser: () => AnalyserNode | null,
+  isActive: boolean,
   instrument: ChordInstrument = 'ukulele',
 ): DetectedChord | null {
-  const noteHistoryRef = useRef<{ note: NoteName; timestamp: number }[]>([]);
-  const lastUpdateRef = useRef(0);
+  const frameHistoryRef = useRef<FrameEntry[]>([]);
+  const lastAnalysisRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const dbBufferRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const [chord, setChord] = useState<DetectedChord | null>(null);
 
-  useEffect(() => {
-    if (!detectedNote) return;
-    // Keep noisy/ambiguous single-pitch readings out of the chord window
-    // entirely (they're fine for showing "current note", but not for
-    // inferring a chord from an accumulated note set).
-    if (detectedNote.clarity < CHORD_MIN_CLARITY) return;
-
-    const now = Date.now();
-
-    noteHistoryRef.current.push({
-      note: detectedNote.note,
-      timestamp: now,
-    });
-
-    noteHistoryRef.current = noteHistoryRef.current.filter(
-      (n) => now - n.timestamp < CHORD_WINDOW_MS,
-    );
-
-    if (now - lastUpdateRef.current < CHORD_UPDATE_INTERVAL_MS) return;
-    lastUpdateRef.current = now;
-
-    const recentNotes = noteHistoryRef.current;
-    const uniqueNotes = [...new Set(recentNotes.map((n) => n.note))];
-
-    if (uniqueNotes.length < CHORD_MIN_UNIQUE_NOTES) return;
-
-    // Build note frequency counts for weighting
-    const noteCounts = new Map<NoteName, number>();
-    for (const entry of recentNotes) {
-      noteCounts.set(entry.note, (noteCounts.get(entry.note) ?? 0) + 1);
+  const analyze = useCallback(() => {
+    const analyser = getAnalyser();
+    if (!analyser) {
+      rafRef.current = requestAnimationFrame(analyze);
+      return;
     }
 
-    // If one note dominates the window, it's a single string ringing -- not a chord
-    const totalDetections = recentNotes.length;
-    const maxCount = Math.max(...noteCounts.values());
-    if (maxCount / totalDetections >= DOMINANT_NOTE_THRESHOLD) return;
+    const now = performance.now();
+    if (now - lastAnalysisRef.current >= ANALYSIS_INTERVAL_MS) {
+      lastAnalysisRef.current = now;
 
-    // Filter out notes that appeared too rarely — they are likely harmonics,
-    // pitch-detection glitches, or bleed from a previous chord
-    const filteredNotes: NoteName[] = [];
-    for (const [note, count] of noteCounts.entries()) {
-      if (count >= MIN_NOTE_COUNT && count / totalDetections >= MIN_NOTE_FRACTION) {
-        filteredNotes.push(note);
+      const binCount = analyser.frequencyBinCount;
+      if (!dbBufferRef.current || dbBufferRef.current.length !== binCount) {
+        dbBufferRef.current = new Float32Array(binCount);
+      }
+      const dbBuffer = dbBufferRef.current;
+      analyser.getFloatFrequencyData(dbBuffer);
+
+      const sampleRate = analyser.context.sampleRate;
+      const binHz = sampleRate / analyser.fftSize;
+      const { minFrequency, maxFrequency } = AUDIO_CONFIG_BY_INSTRUMENT[instrument];
+
+      const linearMags = dbToLinearMagnitudes(dbBuffer);
+      const frequencies = detectPolyphonicFrequencies(linearMags, binHz, {
+        minFrequency,
+        maxFrequency,
+      });
+
+      const frameNotes = new Set<NoteName>();
+      for (const freq of frequencies) {
+        frameNotes.add(frequencyToNote(freq).note);
+      }
+
+      const nowMs = Date.now();
+      frameHistoryRef.current.push({ notes: frameNotes, timestamp: nowMs });
+      frameHistoryRef.current = frameHistoryRef.current.filter(
+        (f) => nowMs - f.timestamp < CHORD_WINDOW_MS,
+      );
+
+      const frames = frameHistoryRef.current;
+      if (frames.length > 0) {
+        const noteCounts = new Map<NoteName, number>();
+        for (const frame of frames) {
+          for (const note of frame.notes) {
+            noteCounts.set(note, (noteCounts.get(note) ?? 0) + 1);
+          }
+        }
+
+        const stableNotes: NoteName[] = [];
+        for (const [note, count] of noteCounts.entries()) {
+          if (count / frames.length >= MIN_FRAME_FRACTION) stableNotes.push(note);
+        }
+
+        if (stableNotes.length >= CHORD_MIN_UNIQUE_NOTES) {
+          const detected = detectChord(stableNotes, noteCounts, instrument);
+          if (detected) {
+            const qualitySuffix = getQualitySuffix(detected.quality);
+            const voicing = findVoicing(detected.root, qualitySuffix, instrument);
+            setChord({
+              root: detected.root,
+              quality: detected.quality,
+              display: detected.display,
+              voicing,
+              timestamp: nowMs,
+            });
+          }
+        } else if (stableNotes.length === 0 && frames.length >= 3) {
+          // Sustained silence/single-note-only across the window -- clear
+          // any stale chord rather than leaving the last guess displayed.
+          setChord(null);
+        }
       }
     }
-    if (filteredNotes.length < CHORD_MIN_UNIQUE_NOTES) return;
 
-    const detected = detectChord(filteredNotes, noteCounts, instrument);
-    if (detected) {
-      const qualitySuffix = getQualitySuffix(detected.quality);
-      const voicing = findVoicing(detected.root, qualitySuffix, instrument);
-      setChord({
-        root: detected.root,
-        quality: detected.quality,
-        display: detected.display,
-        voicing,
-        timestamp: now,
-      });
+    rafRef.current = requestAnimationFrame(analyze);
+  }, [getAnalyser, instrument]);
+
+  useEffect(() => {
+    if (isActive) {
+      frameHistoryRef.current = [];
+      lastAnalysisRef.current = 0;
+      rafRef.current = requestAnimationFrame(analyze);
+    } else {
+      setChord(null);
     }
-  }, [detectedNote, instrument]);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [isActive, analyze]);
 
   return chord;
 }

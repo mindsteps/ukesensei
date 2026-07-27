@@ -233,7 +233,13 @@ export function useWasmAudio() {
       eqHigh.gain.value = eqRef.current.high.gain;
 
       const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 4096;
+      // Chord detection (ukulele/guitar) needs enough bin resolution to tell
+      // apart closely-spaced low notes -- e.g. guitar's open low E (82.4 Hz)
+      // vs F (87.3 Hz) are under 5 Hz apart, well inside a single 4096-point
+      // FFT bin (~10.8 Hz at 44.1kHz). A bigger FFT (~2.7 Hz/bin) resolves
+      // that safely. Other instruments don't run polyphonic chord analysis,
+      // so keep them at the smaller, lower-latency size.
+      analyser.fftSize = (instrument === 'ukulele' || instrument === 'guitar') ? 16384 : 4096;
       // Low smoothing keeps the FFT visualizer reacting to whatever is
       // currently at the mic (plucks, noise, chords) instead of only
       // building up visible energy for sustained, tonal (pure) notes.

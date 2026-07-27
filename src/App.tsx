@@ -129,7 +129,7 @@ export default function App() {
   const { rhythmExercise, beginCustom: beginCustomRhythm } = useRhythmExercise();
   // Chord detection/display only makes sense for chorded instruments with a voicing database.
   const chordInstrument = instrument === 'ukulele' || instrument === 'guitar' ? instrument : null;
-  const detectedChord = useChordDetection(chordInstrument ? detectedNote : null, chordInstrument ?? 'ukulele');
+  const detectedChord = useChordDetection(mic.getAnalyser, !!chordInstrument && mic.isActive, chordInstrument ?? 'ukulele');
 
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
 
