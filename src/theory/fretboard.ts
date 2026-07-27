@@ -138,6 +138,7 @@ export function instrumentFromTuningKey(tuningKey: string): StringInstrument {
 export const NUM_FRETS = 15;
 export const FRET_MARKERS = [5, 7, 10, 12];
 export const DOUBLE_FRET_MARKERS = [12];
+export const OCTAVE_FRET = 12;
 
 export function generateFretboard(tuning: InstrumentTuning = TUNINGS.standard): FretPosition[] {
   const positions: FretPosition[] = [];
