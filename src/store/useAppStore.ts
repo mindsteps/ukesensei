@@ -116,6 +116,15 @@ function getInitialHarmonicaTuningKey(): HarmonicaTuningKey {
   return DEFAULT_HARMONICA_TUNING_KEY;
 }
 
+const CHORD_DETECTION_ENABLED_KEY = 'uke-sensei-chord-detection-enabled';
+
+function getInitialChordDetectionEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  const stored = localStorage.getItem(CHORD_DETECTION_ENABLED_KEY);
+  if (stored === 'false') return false;
+  return true;
+}
+
 function applyThemeClass(theme: Theme) {
   if (typeof document === 'undefined') return;
   const el = document.documentElement;
@@ -175,6 +184,12 @@ interface AppState {
   // Fretboard
   fretboardInverted: boolean;
   setFretboardInverted: (v: boolean) => void;
+
+  // Chord detection (ukulele/guitar only) -- can be turned off since the
+  // polyphonic spectral analysis it runs is heavier than simple note
+  // detection, and not everyone wants a chord guess popping up constantly.
+  chordDetectionEnabled: boolean;
+  setChordDetectionEnabled: (v: boolean) => void;
 
   // Scale selection
   selectedRoot: NoteName;
@@ -364,6 +379,13 @@ export const useAppStore = create<AppState>((set) => ({
 
   fretboardInverted: false,
   setFretboardInverted: (fretboardInverted) => set({ fretboardInverted }),
+
+  chordDetectionEnabled: getInitialChordDetectionEnabled(),
+  setChordDetectionEnabled: (chordDetectionEnabled) =>
+    set(() => {
+      localStorage.setItem(CHORD_DETECTION_ENABLED_KEY, String(chordDetectionEnabled));
+      return { chordDetectionEnabled };
+    }),
 
   selectedRoot: 'C',
   setSelectedRoot: (selectedRoot) => set({ selectedRoot }),

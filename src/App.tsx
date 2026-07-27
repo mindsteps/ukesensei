@@ -129,7 +129,13 @@ export default function App() {
   const { rhythmExercise, beginCustom: beginCustomRhythm } = useRhythmExercise();
   // Chord detection/display only makes sense for chorded instruments with a voicing database.
   const chordInstrument = instrument === 'ukulele' || instrument === 'guitar' ? instrument : null;
-  const detectedChord = useChordDetection(mic.getAnalyser, !!chordInstrument && mic.isActive, chordInstrument ?? 'ukulele');
+  const chordDetectionEnabled = useAppStore((s) => s.chordDetectionEnabled);
+  const setChordDetectionEnabled = useAppStore((s) => s.setChordDetectionEnabled);
+  const detectedChord = useChordDetection(
+    mic.getAnalyser,
+    !!chordInstrument && mic.isActive && chordDetectionEnabled,
+    chordInstrument ?? 'ukulele',
+  );
 
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
 
@@ -894,20 +900,38 @@ export default function App() {
                     </span>
                   ) : null}
                 </div>
-                <button
-                  onClick={() => setFretboardInverted(!fretboardInverted)}
-                  className="text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition flex items-center gap-1"
-                  title={
-                    fretboardInverted
-                      ? `${tuning.strings[0]?.note} string on top`
-                      : `${tuning.strings[tuning.strings.length - 1]?.note} string on top`
-                  }
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M7 4v16M7 4l-3 3M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3" />
-                  </svg>
-                  Flip strings
-                </button>
+                <div className="flex items-center gap-3">
+                  {chordInstrument && (
+                    <button
+                      onClick={() => setChordDetectionEnabled(!chordDetectionEnabled)}
+                      className="text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition flex items-center gap-1"
+                      title={chordDetectionEnabled ? 'Turn off chord detection' : 'Turn on chord detection'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        {chordDetectionEnabled ? (
+                          <path d="M9 18V5l12-2v13M9 9l12-2M6 21a3 3 0 100-6 3 3 0 000 6zM18 19a3 3 0 100-6 3 3 0 000 6z" />
+                        ) : (
+                          <path d="M9 18V5l12-2v13M9 9l12-2M6 21a3 3 0 100-6 3 3 0 000 6zM18 19a3 3 0 100-6 3 3 0 000 6zM3 3l18 18" />
+                        )}
+                      </svg>
+                      Chords {chordDetectionEnabled ? 'on' : 'off'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setFretboardInverted(!fretboardInverted)}
+                    className="text-xs text-[var(--c-text-muted)] hover:text-[var(--c-text)] transition flex items-center gap-1"
+                    title={
+                      fretboardInverted
+                        ? `${tuning.strings[0]?.note} string on top`
+                        : `${tuning.strings[tuning.strings.length - 1]?.note} string on top`
+                    }
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M7 4v16M7 4l-3 3M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3" />
+                    </svg>
+                    Flip strings
+                  </button>
+                </div>
               </div>
               <Fretboard
                 tuning={tuning}
@@ -923,7 +947,7 @@ export default function App() {
                 fretless={instrument === 'cello'}
               />
             </div>
-            {chordInstrument && (
+            {chordInstrument && chordDetectionEnabled && (
               <>
                 <div className="shrink-0 hidden lg:block order-2">
                   <ChordDisplay chord={detectedChord} instrument={chordInstrument} />
