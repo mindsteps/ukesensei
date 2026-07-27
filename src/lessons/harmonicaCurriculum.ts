@@ -1,4 +1,5 @@
 import { getHarmonicaBoard } from '../theory/harmonicaLayout';
+import { HARMONICA_TUNING_KEYS, HARMONICA_TUNING_LABELS, DEFAULT_HARMONICA_TUNING_KEY, type HarmonicaTuningKey } from '../theory/fretboard';
 import type { Lesson, LessonModule } from './types';
 import { createCurriculum } from './curriculum';
 
@@ -440,3 +441,19 @@ export const {
   getLessonsForModule,
   isLessonUnlocked,
 } = harmonicaCurriculum;
+
+/**
+ * Export harmonica tuning keys and labels for UI selection.
+ * Users can select which harmonica key they have (C, G, F, Bb, Eb, Db).
+ * The curriculum board will be the same, but the hole notes will be transposed.
+ */
+export { HARMONICA_TUNING_KEYS, HARMONICA_TUNING_LABELS, DEFAULT_HARMONICA_TUNING_KEY };
+export type { HarmonicaTuningKey };
+
+/**
+ * Get the reference board for a specific harmonica tuning.
+ * Defaults to C major (richter_c) if tuning is not provided.
+ */
+export function getHarmonicaBoardForTuning(tuningKey?: HarmonicaTuningKey) {
+  return getHarmonicaBoard(tuningKey || DEFAULT_HARMONICA_TUNING_KEY);
+}

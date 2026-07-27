@@ -138,8 +138,6 @@ export function instrumentFromTuningKey(tuningKey: string): StringInstrument {
 export const NUM_FRETS = 15;
 export const FRET_MARKERS = [5, 7, 10, 12];
 export const DOUBLE_FRET_MARKERS = [12];
-/** The octave above the open string — the one reference point fretless players commonly mark. */
-export const OCTAVE_FRET = 12;
 
 export function generateFretboard(tuning: InstrumentTuning = TUNINGS.standard): FretPosition[] {
   const positions: FretPosition[] = [];
@@ -185,3 +183,30 @@ export function findNotePositions(
 export function getPositionId(pos: FretPosition): string {
   return `s${pos.string}f${pos.fret}`;
 }
+
+/**
+ * Harmonica tuning keys (different keys that a 10-hole diatonic harmonica can be in).
+ * Each key represents a different physical instrument tuned to that key.
+ * The curriculum board will adapt to the selected key.
+ */
+export const HARMONICA_TUNING_KEYS = [
+  'richter_c',
+  'richter_g',
+  'richter_f',
+  'richter_bb',
+  'richter_eb',
+  'richter_db',
+] as const;
+
+export type HarmonicaTuningKey = (typeof HARMONICA_TUNING_KEYS)[number];
+
+export const HARMONICA_TUNING_LABELS: Record<HarmonicaTuningKey, string> = {
+  richter_c: 'C Major (Richter)',
+  richter_g: 'G Major (Richter)',
+  richter_f: 'F Major (Richter)',
+  richter_bb: 'Bb Major (Richter)',
+  richter_eb: 'Eb Major (Richter)',
+  richter_db: 'Db Major (Richter)',
+};
+
+export const DEFAULT_HARMONICA_TUNING_KEY: HarmonicaTuningKey = 'richter_c';
