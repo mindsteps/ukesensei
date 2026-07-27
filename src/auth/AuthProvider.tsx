@@ -159,29 +159,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openOnboarding = useCallback(() => setForceOnboarding(true), []);
   const closeOnboarding = useCallback(() => setForceOnboarding(false), []);
 
-  // Drops a stale session (one whose user no longer exists server side) and
-  // starts a brand-new anonymous one, so the app can recover on its own
-  // instead of getting permanently stuck failing every auth/profile request.
+  // Drops a stale session (one whose user no longer exists server side) so
+  // the app can recover on its own instead of getting permanently stuck
+  // failing every auth/profile request. Deliberately does NOT start a new
+  // anonymous session here — that only happens lazily once the visitor
+  // actually claims an identity (see claimIdentity), so a stale-session
+  // recovery can't silently spawn a fresh throwaway account on its own.
   const recoverStaleSession = useCallback(async () => {
     const supabase = getSupabase();
     if (!supabase) return;
     console.warn('Detected a stale session (user no longer exists server-side) — starting fresh.');
     setProfile(null);
     setUser(null);
+    setLoading(false);
     try {
       await supabase.auth.signOut();
     } catch (err) {
       console.warn('Sign-out during stale-session recovery failed (continuing anyway):', err);
-    }
-    try {
-      const { error } = await supabase.auth.signInAnonymously();
-      if (error) {
-        console.warn('Failed to start a fresh anonymous session:', error);
-        setLoading(false);
-      }
-    } catch (err) {
-      console.warn('Failed to start a fresh anonymous session:', err);
-      setLoading(false);
     }
   }, []);
 
@@ -205,22 +199,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async (session: Session | null) => {
       if (!session?.user) {
-        // No session yet — sign in anonymously so the app can go straight
-        // into onboarding without a separate "sign in" step. The resulting
-        // auth state change re-enters init() with the new session.
+        // No session yet — this is the normal state for a first-time
+        // visitor (and for anything that merely loads the page without
+        // interacting, like a health check or crawler). We deliberately do
+        // NOT sign in anonymously here: that would create a real
+        // `auth.users` row for every page load. Instead AuthGate shows the
+        // onboarding flow, and a session only gets created lazily once the
+        // visitor actually commits to a name+key (see claimIdentity) or
+        // logs into an existing account.
         setProfile(null);
-        try {
-          const { error } = await supabase.auth.signInAnonymously();
-          if (error) {
-            console.warn('Anonymous sign-in failed:', error);
-            setUser(null);
-            setLoading(false);
-          }
-        } catch (err) {
-          console.warn('Anonymous sign-in failed:', err);
-          setUser(null);
-          setLoading(false);
-        }
+        setUser(null);
+        setLoading(false);
         return;
       }
 
@@ -258,10 +247,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     useAppStore.setState({ completedLessons: [] });
-    // Immediately start a fresh anonymous session so the app re-enters
-    // onboarding instead of getting stuck signed out.
-    const { error } = await supabase.auth.signInAnonymously();
-    if (error) console.warn('Anonymous sign-in failed:', error);
+    // No new session is started here — AuthGate shows onboarding for a
+    // signed-out visitor, and a fresh account only gets created lazily if
+    // they actually claim one (see claimIdentity).
   }, []);
 
   const claimIdentity = useCallback(async (name: string, password: string) => {
@@ -275,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // a new one.
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (!signInError && signInData.session) {
+      setUser(signInData.session.user);
       return 'resumed' as const;
     }
     if (signInError && signInError.code !== 'invalid_credentials') {
@@ -284,11 +273,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('Unexpected error checking existing identity:', signInError);
     }
 
-    // Otherwise, claim this name+password for the current session. This
-    // upgrades an anonymous session into a permanent one (Supabase's
+    // No existing account owns this name+key. This is the only place a
+    // brand-new visitor gets a real `auth.users` row created: lazily,
+    // right as they commit to a name+key by clicking through onboarding —
+    // never just from loading the page (which would otherwise let health
+    // checks/crawlers spam the users table with throwaway anonymous
+    // accounts, one per visit).
+    const { data: { session: existingSession } } = await supabase.auth.getSession();
+    if (!existingSession) {
+      const { error: anonError } = await supabase.auth.signInAnonymously();
+      if (anonError) {
+        console.error('Failed to start a session while claiming identity:', anonError);
+        return 'error' as const;
+      }
+    }
+
+    // Claim this name+password for the (now guaranteed to exist) session.
+    // This upgrades an anonymous session into a permanent one (Supabase's
     // built-in anonymous-to-permanent flow), or re-labels an existing real
     // account.
-    const { error: updateError } = await supabase.auth.updateUser({ email, password });
+    const { data: updateData, error: updateError } = await supabase.auth.updateUser({ email, password });
     if (updateError) {
       if (isMissingAuthUserError(updateError)) {
         console.warn('Stale session detected while claiming identity — recovering.');
@@ -306,6 +310,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return 'taken' as const;
     }
+    // Update state immediately rather than waiting for the async
+    // onAuthStateChange listener to catch up — the very next onboarding
+    // step reads `user` from context to save the profile.
+    if (updateData.user) setUser(updateData.user);
     return 'linked' as const;
   }, [recoverStaleSession]);
 

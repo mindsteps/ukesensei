@@ -5,6 +5,13 @@ import { detectTuningFromNote, AUDIO_CONFIG_BY_INSTRUMENT, MIN_CLARITY } from '.
 import type { Instrument } from '../theory/fretboard';
 import { logMetric, logEvent } from './audioDebugLog';
 
+// Hysteresis around the clarity gate: once a note is locked in, clarity has
+// to drop further before we clear it. A single threshold made `clarity`
+// hovering right at the gate flip the detected note between a value and
+// `null` on every worklet message (~40Hz), which read as a flickering
+// display. Derived from the shared MIN_CLARITY (see noteUtils.ts) so the
+// hold threshold stays in proportion if that's ever tuned again.
+const MIN_CLARITY_TO_HOLD = MIN_CLARITY * 0.75;
 const LEVEL_SMOOTHING = 0.3;
 
 export type EqBand = 'low' | 'mid' | 'high';
@@ -60,6 +67,7 @@ export function useWasmAudio() {
   const smoothedLevelRef = useRef(0);
   const tuningAutoRef = useRef({ lowGCount: 0, highGCount: 0 });
   const lastWorkletMsgAtRef = useRef<number | null>(null);
+  const hasNoteLockRef = useRef(false);
 
   const setDetectedNote = useAppStore((s) => s.setDetectedNote);
   const setAudioLevel = useAppStore((s) => s.setAudioLevel);
@@ -114,15 +122,19 @@ export function useWasmAudio() {
     // it — that sound comes out of the speakers and can leak into the mic,
     // which would otherwise look identical to the user actually playing it.
     if (Date.now() < useAppStore.getState().suppressDetectionUntil) {
+      hasNoteLockRef.current = false;
       setDetectedNote(null);
       return;
     }
 
     const { minFrequency, maxFrequency } = AUDIO_CONFIG_BY_INSTRUMENT[instrumentRef.current];
-    if (frequency < minFrequency || frequency > maxFrequency || clarity < MIN_CLARITY) {
+    const minClarity = hasNoteLockRef.current ? MIN_CLARITY_TO_HOLD : MIN_CLARITY;
+    if (frequency < minFrequency || frequency > maxFrequency || clarity < minClarity) {
+      hasNoteLockRef.current = false;
       setDetectedNote(null);
       return;
     }
+    hasNoteLockRef.current = true;
 
     const noteIndex = ((midiNote % 12) + 12) % 12;
     const note = CHROMATIC_NOTES[noteIndex] as NoteName;
@@ -292,6 +304,7 @@ export function useWasmAudio() {
     setWasmReady(false);
     smoothedLevelRef.current = 0;
     lastWorkletMsgAtRef.current = null;
+    hasNoteLockRef.current = false;
   }, []);
 
   const setGain = useCallback((value: number) => {
@@ -335,6 +348,7 @@ export function useWasmAudio() {
   useEffect(() => {
     if (prevInstrumentRef.current === instrument) return;
     prevInstrumentRef.current = instrument;
+    hasNoteLockRef.current = false;
     setDetectedNote(null);
     tuningAutoRef.current = { lowGCount: 0, highGCount: 0 };
     if (stateRef.current.audioContext) {

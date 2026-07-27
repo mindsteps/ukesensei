@@ -17,14 +17,13 @@ function AuthGateInner({ children }: { children: ReactNode }) {
     );
   }
 
-  // No account step — sign-in happens anonymously in the background
-  // (see AuthProvider). If that ever fails, fall back to running the app
-  // in local-only mode rather than dead-ending the user.
-  if (!user) {
-    return <>{children}</>;
-  }
-
-  if (!profile?.onboarding_complete || forceOnboarding) {
+  // No session yet (first-time visitor — or anything that merely loaded
+  // the page without interacting, like a health check or crawler) is
+  // treated the same as an existing-but-not-onboarded profile: show
+  // onboarding. No account is created just from reaching this screen —
+  // AuthProvider only creates one lazily once a name+key is actually
+  // claimed (see claimIdentity), so idle page loads can't spam real users.
+  if (!user || !profile?.onboarding_complete || forceOnboarding) {
     return <Onboarding onComplete={closeOnboarding} />;
   }
 
