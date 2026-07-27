@@ -69,7 +69,14 @@ export const AUDIO_CONFIG_BY_INSTRUMENT: Record<
   harmonica: { minFrequency: 240, maxFrequency: 2200, analysisSize: 2048 },
 };
 
-const MIN_CLARITY = 0.85;
+// Minimum "clarity" (periodicity confidence, 0-1) required before a detected
+// frequency is trusted as a real note. 0.85 turned out to be too strict for
+// real-world use — a naturally sung/played tone with any breathiness,
+// vibrato, or room noise often lands in the 0.6-0.85 range and would
+// otherwise never surface as a detected note even when it's clearly audible
+// and in tune. 0.6 still rejects silence/pure noise while accepting normal
+// sustained notes.
+export const MIN_CLARITY = 0.6;
 
 export function analyzeFrequency(
   frequency: number,

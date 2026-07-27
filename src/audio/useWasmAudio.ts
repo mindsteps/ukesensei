@@ -1,11 +1,10 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { CHROMATIC_NOTES, type NoteName } from '../theory/notes';
-import { detectTuningFromNote, AUDIO_CONFIG_BY_INSTRUMENT } from './noteUtils';
+import { detectTuningFromNote, AUDIO_CONFIG_BY_INSTRUMENT, MIN_CLARITY } from './noteUtils';
 import type { Instrument } from '../theory/fretboard';
 import { logMetric, logEvent } from './audioDebugLog';
 
-const MIN_CLARITY = 0.85;
 const LEVEL_SMOOTHING = 0.3;
 
 export type EqBand = 'low' | 'mid' | 'high';
