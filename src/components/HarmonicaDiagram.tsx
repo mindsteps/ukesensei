@@ -1,8 +1,9 @@
 import { memo } from 'react';
-import { HARMONICA_HOLES, type HarmonicaDirection } from '../theory/harmonicaLayout';
+import type { HarmonicaHole, HarmonicaDirection } from '../theory/harmonicaLayout';
 import { displayNote, type NoteName } from '../theory/notes';
 
 interface HarmonicaDiagramProps {
+  holes: HarmonicaHole[];
   active: { hole: number; direction: HarmonicaDirection; note: NoteName; octave: number } | null;
   /** Called when a hole's blow or draw half is clicked/tapped, to hear & select it. */
   onHoleClick?: (hole: number, direction: HarmonicaDirection, note: NoteName, octave: number) => void;
@@ -15,8 +16,6 @@ const HOLE_GAP = 4;
 const HOLE_H = 66;
 const PAD_X = 10;
 const PAD_Y = 8;
-const SVG_WIDTH = PAD_X * 2 + HARMONICA_HOLES.length * HOLE_W + (HARMONICA_HOLES.length - 1) * HOLE_GAP;
-const SVG_HEIGHT = PAD_Y * 2 + HOLE_H + 14;
 
 /**
  * A schematic row of the 10 holes on a diatonic harmonica, each split into a
@@ -24,10 +23,15 @@ const SVG_HEIGHT = PAD_Y * 2 + HOLE_H + 14;
  * a fingering/fretboard diagram since a harmonica has no strings or keys,
  * just two fixed pitches per hole. Halves are clickable so players can hear
  * & select any note directly on the diagram.
+ *
+ * `holes` is passed in (rather than hardcoded) so the diagram can render
+ * any harmonica key/tuning selected by the user.
  */
-function HarmonicaDiagramInner({ active, onHoleClick, size = 260, opacity = 1 }: HarmonicaDiagramProps) {
-  const scale = size / SVG_WIDTH;
-  const height = SVG_HEIGHT * scale;
+function HarmonicaDiagramInner({ holes, active, onHoleClick, size = 260, opacity = 1 }: HarmonicaDiagramProps) {
+  const svgWidth = PAD_X * 2 + holes.length * HOLE_W + (holes.length - 1) * HOLE_GAP;
+  const svgHeight = PAD_Y * 2 + HOLE_H + 14;
+  const scale = size / svgWidth;
+  const height = svgHeight * scale;
 
   return (
     <div style={{ opacity }} className="flex flex-col items-center text-[var(--c-text)] select-none">
@@ -41,15 +45,15 @@ function HarmonicaDiagramInner({ active, onHoleClick, size = 260, opacity = 1 }:
         </div>
       )}
       <svg
-        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         width={size}
         height={height}
         style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
       >
-        <text x={PAD_X} y={SVG_HEIGHT - 3} fontSize={7} className="fill-current opacity-40" textAnchor="start">
+        <text x={PAD_X} y={svgHeight - 3} fontSize={7} className="fill-current opacity-40" textAnchor="start">
           blow ↑ / draw ↓
         </text>
-        {HARMONICA_HOLES.map((h, i) => {
+        {holes.map((h, i) => {
           const x = PAD_X + i * (HOLE_W + HOLE_GAP);
           const y = PAD_Y;
           const blowActive = active?.hole === h.hole && active.direction === 'blow';

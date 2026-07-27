@@ -35,6 +35,7 @@ export function useExercise(opts: UseExerciseOptions = {}) {
   const tuning = useAppStore((s) => s.tuning);
   const instrument = useAppStore((s) => s.instrument);
   const handpanLayoutKey = useAppStore((s) => s.handpanLayoutKey);
+  const harmonicaTuningKey = useAppStore((s) => s.harmonicaTuningKey);
 
   const holdStartRef = useRef<number | null>(null);
   const lastNoteRef = useRef<string | null>(null);
@@ -45,7 +46,7 @@ export function useExercise(opts: UseExerciseOptions = {}) {
     (root: NoteName, scaleKey: string, direction: ExerciseDirection = 'ascending', bpm: number | null = null, loops: number = 1) => {
       const board = instrument === 'voice' ? getVoiceRangeBoard()
         : instrument === 'handpan' ? getHandpanBoard(handpanLayoutKey)
-        : instrument === 'harmonica' ? getHarmonicaBoard()
+        : instrument === 'harmonica' ? getHarmonicaBoard(harmonicaTuningKey)
         : instrument === 'cello' ? getCelloPitchBoard()
         : generateFretboard(tuning);
       const config = createScaleExerciseFromBoard(root, scaleKey, board, direction);

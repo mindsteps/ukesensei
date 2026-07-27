@@ -873,7 +873,7 @@ export default function App() {
           </div>
         ) : instrument === 'harmonica' ? (
           <div className="mx-auto sm:mx-0">
-            <HarmonicaPanel detectedNote={detectedNote} onPlayNote={previewNote} />
+            <HarmonicaPanel detectedNote={detectedNote} onPlayNote={previewNote} tuningKey={harmonicaTuningKey} />
           </div>
         ) : (
           <>
