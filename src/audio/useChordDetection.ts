@@ -10,6 +10,15 @@ const DOMINANT_NOTE_THRESHOLD = 0.75;
 // A note must appear at least this often to be considered real (filters harmonics / noise)
 const MIN_NOTE_FRACTION = 0.12;
 const MIN_NOTE_COUNT = 2;
+// Chord inference accumulates single-pitch readings over a window and infers
+// a chord from the resulting note set -- so it's far more sensitive to noisy/
+// ambiguous readings than just displaying "the current note" is. The
+// single-note display threshold was deliberately lowered (see noteUtils.ts)
+// to catch natural, breathy/vibrato-heavy tones, but feeding those same
+// low-confidence readings into the chord window is what let stray harmonics
+// and inter-string transients get miscounted as real notes, producing wrong
+// chord guesses (e.g. an A chord read as Gmaj7). Require a higher bar here.
+const CHORD_MIN_CLARITY = 0.8;
 
 export interface DetectedChord {
   root: NoteName;
@@ -29,6 +38,10 @@ export function useChordDetection(
 
   useEffect(() => {
     if (!detectedNote) return;
+    // Keep noisy/ambiguous single-pitch readings out of the chord window
+    // entirely (they're fine for showing "current note", but not for
+    // inferring a chord from an accumulated note set).
+    if (detectedNote.clarity < CHORD_MIN_CLARITY) return;
 
     const now = Date.now();
 
