@@ -78,6 +78,8 @@ export default function App() {
   const tuningAutoDetected = useAppStore((s) => s.tuningAutoDetected);
   const handpanLayoutKey = useAppStore((s) => s.handpanLayoutKey);
   const setHandpanLayoutKey = useAppStore((s) => s.setHandpanLayoutKey);
+  const harmonicaTuningKey = useAppStore((s) => s.harmonicaTuningKey);
+  const setHarmonicaTuningKey = useAppStore((s) => s.setHarmonicaTuningKey);
   const theme = useAppStore((s) => s.theme);
   const toggleTheme = useAppStore((s) => s.toggleTheme);
   const openTour = useAppStore((s) => s.openTour);
@@ -654,6 +656,8 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
@@ -668,6 +672,8 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
@@ -682,6 +688,8 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
@@ -696,6 +704,8 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
@@ -710,6 +720,8 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
@@ -725,6 +737,8 @@ export default function App() {
           tuningKey={tuningKey} onTuningChange={setTuning}
           tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
           lessonsAvailable={!!curriculum}
           exercisesAvailable={instrument !== 'clarinet'}>
@@ -737,6 +751,8 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
@@ -752,6 +768,8 @@ export default function App() {
         tuningKey={tuningKey} onTuningChange={setTuning}
         tuningAutoDetected={tuningAutoDetected}
         handpanLayoutKey={handpanLayoutKey} onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
         theme={theme} onToggleTheme={toggleTheme} onOpenTour={openTour}
         lessonsAvailable={!!curriculum}
         exercisesAvailable={instrument !== 'clarinet'}>
@@ -788,6 +806,8 @@ export default function App() {
       tuningAutoDetected={tuningAutoDetected}
       handpanLayoutKey={handpanLayoutKey}
       onHandpanLayoutChange={setHandpanLayoutKey}
+      harmonicaTuningKey={harmonicaTuningKey}
+      onHarmonicaTuningChange={setHarmonicaTuningKey}
       theme={theme}
       onToggleTheme={toggleTheme} onOpenTour={openTour}
       lessonsAvailable={!!curriculum}

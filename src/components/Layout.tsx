@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AppView, Instrument, TuningKey, Theme } from '../store/useAppStore';
-import { TUNINGS_BY_INSTRUMENT, isStringInstrument } from '../theory/fretboard';
+import { TUNINGS_BY_INSTRUMENT, isStringInstrument, HARMONICA_TUNING_LABELS, type HarmonicaTuningKey } from '../theory/fretboard';
 import { HANDPAN_LAYOUTS, HANDPAN_LAYOUT_KEYS, type HandpanLayoutKey } from '../theory/handpanLayout';
 import { useAuth } from '../auth/AuthProvider';
 import { Logo } from './Logo';
@@ -15,6 +15,8 @@ interface LayoutProps {
   tuningAutoDetected: boolean;
   handpanLayoutKey: HandpanLayoutKey;
   onHandpanLayoutChange: (key: HandpanLayoutKey) => void;
+  harmonicaTuningKey: HarmonicaTuningKey;
+  onHarmonicaTuningChange: (key: HarmonicaTuningKey) => void;
   theme: Theme;
   onToggleTheme: () => void;
   onOpenTour: () => void;
@@ -35,6 +37,8 @@ export function Layout({
   tuningAutoDetected,
   handpanLayoutKey,
   onHandpanLayoutChange,
+  harmonicaTuningKey,
+  onHarmonicaTuningChange,
   theme,
   onToggleTheme,
   onOpenTour,
@@ -100,6 +104,19 @@ export function Layout({
                 >
                   {HANDPAN_LAYOUT_KEYS.map((key) => (
                     <option key={key} value={key}>{HANDPAN_LAYOUTS[key].name}</option>
+                  ))}
+                </select>
+              )}
+
+              {instrument === 'harmonica' && (
+                <select
+                  value={harmonicaTuningKey}
+                  onChange={(e) => onHarmonicaTuningChange(e.target.value as HarmonicaTuningKey)}
+                  aria-label="Harmonica key"
+                  className="bg-[var(--c-surface)] text-[var(--c-text-on-input)] border border-[var(--c-border)] rounded-lg px-2 py-1 text-xs max-w-[160px] sm:max-w-none"
+                >
+                  {Object.entries(HARMONICA_TUNING_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
                   ))}
                 </select>
               )}

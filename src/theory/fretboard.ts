@@ -211,3 +211,10 @@ export const HARMONICA_TUNING_LABELS: Record<HarmonicaTuningKey, string> = {
 };
 
 export const DEFAULT_HARMONICA_TUNING_KEY: HarmonicaTuningKey = 'richter_c';
+
+/**
+ * Type guard to check if a string is a valid harmonica tuning key.
+ */
+export function isHarmonicaTuningKey(key: string): key is HarmonicaTuningKey {
+  return HARMONICA_TUNING_KEYS.includes(key as HarmonicaTuningKey);
+}

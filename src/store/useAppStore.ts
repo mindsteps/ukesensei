@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { NoteName } from '../theory/notes';
 import type { FretPosition, Instrument, InstrumentTuning } from '../theory/fretboard';
-import { DEFAULT_TUNING_KEY, TUNINGS_BY_INSTRUMENT, isStringInstrument, supportsExercises } from '../theory/fretboard';
+import { DEFAULT_TUNING_KEY, TUNINGS_BY_INSTRUMENT, isStringInstrument, supportsExercises, HARMONICA_TUNING_KEYS, DEFAULT_HARMONICA_TUNING_KEY, type HarmonicaTuningKey } from '../theory/fretboard';
 import { CELLO_TUNING } from '../theory/celloPitches';
 import { DEFAULT_HANDPAN_LAYOUT_KEY, isHandpanLayoutKey, type HandpanLayoutKey } from '../theory/handpanLayout';
 import { pathToState } from '../routing/url';
@@ -105,6 +105,17 @@ function getInitialHandpanLayoutKey(): HandpanLayoutKey {
   return DEFAULT_HANDPAN_LAYOUT_KEY;
 }
 
+const HARMONICA_TUNING_KEY = 'uke-sensei-harmonica-tuning';
+
+function getInitialHarmonicaTuningKey(): HarmonicaTuningKey {
+  if (typeof window === 'undefined') return DEFAULT_HARMONICA_TUNING_KEY;
+  const stored = localStorage.getItem(HARMONICA_TUNING_KEY);
+  if (stored && HARMONICA_TUNING_KEYS.includes(stored as HarmonicaTuningKey)) {
+    return stored as HarmonicaTuningKey;
+  }
+  return DEFAULT_HARMONICA_TUNING_KEY;
+}
+
 function applyThemeClass(theme: Theme) {
   if (typeof document === 'undefined') return;
   const el = document.documentElement;
@@ -137,6 +148,10 @@ interface AppState {
   // Handpan scale/layout (handpan's equivalent of a tuning)
   handpanLayoutKey: HandpanLayoutKey;
   setHandpanLayoutKey: (key: HandpanLayoutKey) => void;
+
+  // Harmonica tuning key (harmonica's equivalent of a tuning)
+  harmonicaTuningKey: HarmonicaTuningKey;
+  setHarmonicaTuningKey: (key: HarmonicaTuningKey) => void;
 
   // Audio
   isListening: boolean;
@@ -327,6 +342,13 @@ export const useAppStore = create<AppState>((set) => ({
     set(() => {
       localStorage.setItem(HANDPAN_LAYOUT_KEY, handpanLayoutKey);
       return { handpanLayoutKey };
+    }),
+
+  harmonicaTuningKey: getInitialHarmonicaTuningKey(),
+  setHarmonicaTuningKey: (harmonicaTuningKey) =>
+    set(() => {
+      localStorage.setItem(HARMONICA_TUNING_KEY, harmonicaTuningKey);
+      return { harmonicaTuningKey };
     }),
 
   isListening: false,
